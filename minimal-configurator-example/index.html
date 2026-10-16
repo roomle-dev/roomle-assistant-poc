@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Minimal Configurator Example</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+
+  <body>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #rubens-configurator {
+        width: 100%;
+        height: 100%;
+      }
+      #rubens-configurator iframe {
+        border: none;
+      }
+    </style>
+
+    <div id="rubens-configurator"></div>
+
+    <script type="module">
+      // Minimal example that initialises a default Roomle configurator. It is
+      // plain javascript without any build step and needs no HI context.
+      import RoomleConfiguratorApi from 'https://unpkg.com/@roomle/embedding-lib@8.1.0';
+
+      (async function () {
+        const options = Object.fromEntries(
+          new URLSearchParams(window.location.search)
+        );
+        // "id" selects the item or configuration to load and is not an init option
+        const id = options.id ?? 'usm:frame';
+        delete options.id;
+        const instance = await RoomleConfiguratorApi.createConfigurator(
+          'demoConfigurator', // <-- embedding ID (configuratorId)
+          document.getElementById('rubens-configurator'),
+          options
+        );
+
+        // load the default item as a starting point
+        await instance.ui.loadObject(id);
+      })();
+    </script>
+  </body>
+</html>

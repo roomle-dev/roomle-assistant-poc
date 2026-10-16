@@ -1,0 +1,24 @@
+{
+  "name": "roomle-configurator-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Roomle configurator MCP server PoC with a minimal standalone configurator example",
+  "workspaces": [
+    "configurator-mcp",
+    "minimal-configurator-example"
+  ],
+  "scripts": {
+    "start": "node minimal-configurator-example/start.mjs",
+    "dev": "node minimal-configurator-example/start.mjs --dev",
+    "typecheck": "npm run typecheck --workspace configurator-mcp",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
+  },
+  "devDependencies": {
+    "oxlint": "1.86.0",
+    "prettier": "3.8.3"
+  }
+}
