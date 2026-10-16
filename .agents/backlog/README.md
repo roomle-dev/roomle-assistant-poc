@@ -11,3 +11,5 @@ it is known, the proposed change and the test that guards it. It never carries s
 
 | Item | To do | Priority |
 |---|---|---|
+| The drawer's collapse arrow covers the corner of the chat input | roomle-ui `InteractionsContainer.vue` places `.down-trigger` at 90% of the drawer height on its left edge (desktop); it covers the top left corner of the AI Planning Assistant input (`PlanningAssistantChat.vue`) and of the AI image chat input, in the planner and the configurator. Give the inputs room for the arrow, or place the arrow above them | low |
+| The AI chat fullscreen button covers the selection buttons | roomle-ui `ConfiguratorMain.vue`: the `AiChatButton` in fullscreen is positioned on its own (`ai-chat-button--fullscreen`, 1rem from the bottom right) and covers the `SelectionButtons` stack (start configuring, the planning assistant) 11 px above it. Make it one of the selection buttons, as the planning assistant button is | low |

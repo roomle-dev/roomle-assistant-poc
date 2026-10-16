@@ -11,6 +11,5 @@ The agent-facing knowledge base — skills, analyses, decisions and the backlog 
 | Document | Description |
 |---|---|
 | [minimal-configurator-example/README.md](../minimal-configurator-example/README.md) | The standalone configurator example page and its launcher |
-| [configurator-mcp/README.md](../configurator-mcp/README.md) | The MCP server workspace |
-
-The reference of the MCP server, its tools and the clients is added here with the server.
+| [configurator-mcp-server.md](configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend and how to run and connect them |
+| [configurator-mcp/README.md](../configurator-mcp/README.md) | The workspace of the MCP server and the chat backend, file by file |

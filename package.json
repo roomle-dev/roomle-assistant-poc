@@ -3,15 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Roomle configurator MCP server PoC with a minimal standalone configurator example",
+  "description": "Roomle configurator MCP server PoC with a minimal standalone configurator example and its AI chat",
   "workspaces": [
     "configurator-mcp",
+    "configurator-mcp/configurator-mcp-server",
+    "configurator-mcp/configurator-mcp-chat",
     "minimal-configurator-example"
   ],
   "scripts": {
     "start": "node minimal-configurator-example/start.mjs",
+    "mcp-server": "npm start --workspace configurator-mcp-server",
     "dev": "node minimal-configurator-example/start.mjs --dev",
-    "typecheck": "npm run typecheck --workspace configurator-mcp",
+    "test": "cd configurator-mcp && npm test",
+    "typecheck": "cd configurator-mcp && npm run typecheck",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "oxlint",

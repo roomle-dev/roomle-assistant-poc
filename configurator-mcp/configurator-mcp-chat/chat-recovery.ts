@@ -1,0 +1,121 @@
+import type { ToolExecutionOptions, ToolSet } from 'ai';
+
+const TOOL_LABELS: Record<string, string> = {
+  undo: 'Undo',
+  redo: 'Redo',
+};
+
+interface Outcome {
+  toolName: string;
+  status: 'pending' | 'returned' | 'threw';
+  result?: any;
+  error?: unknown;
+}
+
+const textOf = (value: unknown): string => {
+  if (value instanceof Error) return value.message;
+  try {
+    return typeof value === 'string'
+      ? value
+      : (JSON.stringify(value) ?? String(value));
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
+};
+
+const resultData = (result: any): any => {
+  if (result?.structuredContent !== undefined) return result.structuredContent;
+  const text = result?.content
+    ?.filter((part: any) => part.type === 'text')
+    .map((part: any) => part.text)
+    .join('\n');
+  if (text === undefined) return result;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
+const resultDetails = (data: any): string[] => {
+  if (!data || typeof data !== 'object')
+    return data == null ? [] : [textOf(data)];
+  const details: string[] = [];
+  for (const key of ['undone', 'redone', 'canUndo', 'canRedo']) {
+    if (data[key] !== undefined) details.push(`${key}: ${textOf(data[key])}`);
+  }
+  if (data.hint) details.push(textOf(data.hint));
+  return details;
+};
+
+/**
+ * Records tool execution independently of whether the model finishes its
+ * step, so an interrupted reply can say what the tools changed.
+ */
+export const createChatRecovery = (tools: ToolSet) => {
+  const outcomes: Outcome[] = [];
+  const recordedTools: ToolSet = Object.fromEntries(
+    Object.entries(tools).map(([toolName, tool]) => {
+      if (!tool.execute) return [toolName, tool];
+      const execute = tool.execute.bind(tool);
+      return [
+        toolName,
+        {
+          ...tool,
+          execute: async (
+            input: unknown,
+            options: ToolExecutionOptions<unknown>
+          ) => {
+            const outcome: Outcome = { toolName, status: 'pending' };
+            outcomes.push(outcome);
+            try {
+              const result = await execute(input, options);
+              outcome.result = result;
+              outcome.status = 'returned';
+              return result;
+            } catch (error) {
+              outcome.error = error;
+              outcome.status = 'threw';
+              throw error;
+            }
+          },
+        },
+      ];
+    })
+  );
+
+  const summary = (): string => {
+    const lines = [
+      "The assistant's reply was interrupted. Any text above is incomplete.",
+    ];
+    if (!outcomes.length) {
+      lines.push('No tool ran, so the configuration was not changed.');
+      return lines.join('\n\n');
+    }
+    for (const outcome of outcomes) {
+      const label = TOOL_LABELS[outcome.toolName] ?? outcome.toolName;
+      if (outcome.status === 'returned' && !outcome.result?.isError) {
+        const details = resultDetails(resultData(outcome.result));
+        lines.push(
+          `- Completed ${label}: ${details.length ? details.join('; ') : 'the tool returned successfully.'}`
+        );
+      } else {
+        const detail =
+          outcome.status === 'threw'
+            ? textOf(outcome.error)
+            : outcome.status === 'returned'
+              ? textOf(resultData(outcome.result))
+              : 'no result was received';
+        lines.push(
+          `- Unconfirmed ${label}: ${detail}. Check the configuration before trying this operation again.`
+        );
+      }
+    }
+    lines.push(
+      'These are the recorded tool outcomes; no operation was repeated automatically.'
+    );
+    return lines.join('\n\n');
+  };
+
+  return { tools: recordedTools, summary };
+};

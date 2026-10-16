@@ -30,20 +30,241 @@
     <script type="module">
       // Minimal example that initialises a default Roomle configurator. It is
       // plain javascript without any build step and needs no HI context.
+      // It connects to the configurator MCP server; with chat=true it also
+      // shows the AI Planning Assistant window and runs its turns through the
+      // chat backend.
       import RoomleConfiguratorApi from 'https://unpkg.com/@roomle/embedding-lib@8.1.0';
+
+      // The configurator methods the MCP server may call on this page; the
+      // server names the same methods (configurator-mcp-server/configurator-api.ts).
+      const CONFIGURATOR_METHODS = ['undo', 'redo'];
+      const BRIDGE_PROTOCOL = 2;
+      const TOOL_STATUS_PREFIX = '[tool] ';
+      const SESSION_IN_USE = 4409;
+
+      const log = (...args) => console.log('[configurator-example]', ...args);
+
+      const startAssistant = (instance, { useChat, mcpPort, chatPort }) => {
+        const clientId = crypto.randomUUID();
+        const hasWindow =
+          useChat &&
+          typeof instance.extended.planningAssistantOutput === 'function';
+        if (useChat && !hasWindow) {
+          log('the configurator has no AI Planning Assistant window - no chat');
+        }
+        const output = (part) => {
+          if (hasWindow) {
+            instance.extended
+              .planningAssistantOutput(part)
+              .catch((error) => log('output failed', error));
+          }
+        };
+
+        // The configurator reports its undo history with every change; the
+        // MCP server learns it from the events and from the state sent on
+        // connection.
+        let history = { undo: false, redo: false };
+        let bridge;
+        instance.extended.callbacks.onHistoryChange = (undo, redo) => {
+          history = { undo, redo };
+          bridge?.send(
+            JSON.stringify({ kind: 'event', name: 'historyChange', undo, redo })
+          );
+        };
+
+        const connectBridge = () => {
+          const socket = new WebSocket(`ws://localhost:${mcpPort}/bridge`);
+          socket.onopen = () =>
+            socket.send(
+              JSON.stringify({
+                kind: 'hello',
+                example: 'minimal-configurator-example',
+                url: window.location.origin + window.location.pathname,
+                protocol: BRIDGE_PROTOCOL,
+                clientId,
+              })
+            );
+          socket.onmessage = async (event) => {
+            const message = JSON.parse(event.data);
+            if (message.kind === 'ready') {
+              bridge = socket;
+              socket.send(
+                JSON.stringify({
+                  kind: 'event',
+                  name: 'historyChange',
+                  ...history,
+                })
+              );
+              log('connected to the MCP server');
+              output({ type: 'availability', available: true });
+              return;
+            }
+            if (message.kind !== 'call') {
+              return;
+            }
+            const reply = { kind: 'result', id: message.id, ok: true };
+            try {
+              if (!CONFIGURATOR_METHODS.includes(message.method)) {
+                throw new Error(
+                  `Configurator method not exposed: ${message.method}`
+                );
+              }
+              log('call', message.method);
+              reply.result = await instance.extended[message.method](
+                ...message.args
+              );
+            } catch (error) {
+              reply.ok = false;
+              reply.error =
+                error instanceof Error ? error.message : String(error);
+            }
+            socket.send(JSON.stringify(reply));
+          };
+          socket.onclose = (event) => {
+            if (bridge === socket) {
+              bridge = undefined;
+            }
+            if (event.code === SESSION_IN_USE) {
+              log('another configurator page is connected to the MCP server');
+              output({
+                type: 'availability',
+                available: false,
+                text: 'Another configurator page uses the assistant - close it and reload this page.',
+              });
+              return;
+            }
+            output({
+              type: 'availability',
+              available: false,
+              text: 'Connecting to the assistant...',
+            });
+            setTimeout(connectBridge, 3000);
+          };
+        };
+
+        if (hasWindow) {
+          startChat(instance, { clientId, chatPort, output });
+        }
+        connectBridge();
+      };
+
+      // The stream carries answer text and [tool] status lines; only the
+      // answer belongs in the window, the tool name goes to its status line.
+      // While the stream runs, a last line that is or may become a [tool]
+      // line waits for the next chunk.
+      const splitStreamText = (raw, complete) => {
+        const lines = raw.split('\n');
+        const lastLine = lines[lines.length - 1];
+        if (
+          !complete &&
+          (TOOL_STATUS_PREFIX.startsWith(lastLine) ||
+            lastLine.startsWith(TOOL_STATUS_PREFIX))
+        ) {
+          lines.pop();
+        }
+        const toolLines = lines.filter((line) =>
+          line.startsWith(TOOL_STATUS_PREFIX)
+        );
+        return {
+          answer: lines
+            .filter((line) => !line.startsWith(TOOL_STATUS_PREFIX))
+            .join('\n'),
+          lastTool: toolLines.length
+            ? toolLines[toolLines.length - 1].slice(TOOL_STATUS_PREFIX.length)
+            : '',
+        };
+      };
+
+      // Every message of the window runs one turn of the chat backend, which
+      // calls the tools of the MCP server; the conversation stays in this page.
+      const startChat = (instance, { clientId, chatPort, output }) => {
+        const chatUrl = `http://localhost:${chatPort}/chat`;
+        const conversation = [];
+
+        const send = async ({ text }) => {
+          conversation.push({ role: 'user', content: text });
+          let sentAnswer = '';
+          let lastTool = '';
+          const emit = (raw, complete) => {
+            const { answer, lastTool: tool } = splitStreamText(raw, complete);
+            if (
+              answer.length > sentAnswer.length &&
+              answer.startsWith(sentAnswer)
+            ) {
+              output({ type: 'text', text: answer.slice(sentAnswer.length) });
+              sentAnswer = answer;
+            }
+            if (tool && tool !== lastTool) {
+              lastTool = tool;
+              output({ type: 'activity', text: tool });
+            }
+            return answer;
+          };
+          try {
+            const response = await fetch(chatUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ messages: conversation, clientId }),
+            });
+            if (!response.ok || !response.body) {
+              const errorText = await response.text().catch(() => '');
+              conversation.pop();
+              output({
+                type: 'error',
+                text: errorText || `Chat failed (HTTP ${response.status})`,
+              });
+              return;
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let raw = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                break;
+              }
+              raw += decoder.decode(value, { stream: true });
+              emit(raw, false);
+            }
+            conversation.push({ role: 'assistant', content: emit(raw, true) });
+            output({ type: 'done' });
+          } catch (error) {
+            conversation.pop();
+            log('chat failed', error);
+            output({ type: 'error', text: `Chat failed: ${error.message}` });
+          }
+        };
+
+        // The window's input stays off until the bridge reports availability,
+        // so this handler is in place before the first message.
+        instance.extended.callbacks.onPlanningAssistantPrompt = (prompt) => {
+          send(prompt);
+        };
+      };
 
       (async function () {
         const options = Object.fromEntries(
           new URLSearchParams(window.location.search)
         );
-        // "id" selects the item or configuration to load and is not an init option
+        // "id" selects the item or configuration to load; chat, mcp_port and
+        // chat_port configure this page - none of them is an init option
         const id = options.id ?? 'usm:frame';
-        delete options.id;
+        const useChat = options.chat === 'true';
+        const mcpPort = options.mcp_port ?? '3100';
+        const chatPort = options.chat_port ?? '3200';
+        for (const key of ['id', 'chat', 'mcp_port', 'chat_port']) {
+          delete options[key];
+        }
+        if (useChat) {
+          options.featureFlags = { planningAssistant: true };
+        }
         const instance = await RoomleConfiguratorApi.createConfigurator(
           'demoConfigurator', // <-- embedding ID (configuratorId)
           document.getElementById('rubens-configurator'),
           options
         );
+
+        startAssistant(instance, { useChat, mcpPort, chatPort });
 
         // load the default item as a starting point
         await instance.ui.loadObject(id);

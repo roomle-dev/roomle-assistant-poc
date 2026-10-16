@@ -35,6 +35,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
+| [configurator-example-with-planning-assistant-chat.md](configurator-example-with-planning-assistant-chat.md) | Implemented, branches not merged | The configurator example as host of roomle-ui's AI Planning Assistant window: the chat API moves to the shared callback base, the example gets a Mistral chat backend and a bridge, the first MCP server offers undo and redo, local only |
 
 Add feature analysis documents as needed following the naming convention:
 `kebab-case-description.md` (e.g., `simplified-docking-for-agents.md`).

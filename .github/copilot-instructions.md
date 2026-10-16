@@ -79,7 +79,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 roomle-configurator-mcp is a demonstration and development environment for:
 
 1. **Minimal Configurator Example** — A standalone HTML page (`minimal-configurator-example/index.html`) that initialises a default Roomle configurator with the embedding-lib, served by the launcher `minimal-configurator-example/start.mjs`
-2. **Configurator MCP Server** — The TypeScript workspace `configurator-mcp` for the Model Context Protocol (MCP) server that lets AI agents configure Roomle objects in a live configurator session. **The server is not implemented yet**; its analysis comes first, and nothing in the workspace is built speculatively
+2. **Configurator MCP Server** — The TypeScript MCP server (`configurator-mcp/configurator-mcp-server`) that lets AI agents change a Roomle configuration in a live configurator session. Its tools call the `RoomleConfigurator` API through the page; they are `undo` and `redo`
+3. **AI Chat** — The chat backend (`configurator-mcp/configurator-mcp-chat`, Vercel AI SDK, the Mistral models `mistral-medium-latest` and `mistral-large-latest`) behind roomle-ui's AI Planning Assistant window in the configurator; an MCP client of the server
 
 The pattern for this repository is [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example): the HI MCP server there plans HOMAG Intelligence object groups in a live Roomle room-planner session, from two JSON files (master data and the articles of a library) that describe every configuration option. A Roomle configurator has no such single data set:
 
@@ -90,7 +91,10 @@ The pattern for this repository is [roomle-hi-example](https://github.com/roomle
 - The docking logic of Roomle components is more complicated than the docking of HI articles and has to be simplified for the agent, as the HI MCP server does with relations between articles.
 
 The start script (`npm start`) provides:
+- A build gate: `npm install` (first run) and the typecheck of the `configurator-mcp` workspace
 - Static file serving for the example HTML page on port 3000
+- The MCP server on port 3100: `POST /mcp` (Streamable HTTP) and the page bridge (WebSocket `/bridge`)
+- With `npm start mistral-medium <api-key>` or `npm start mistral-large <api-key>`: the chat backend on port 3200 and the page opened with the AI Planning Assistant window
 - Browser auto-open at the example URL
 
 ## Repository Structure
@@ -99,16 +103,34 @@ The start script (`npm start`) provides:
 .
 ├── minimal-configurator-example/   # Minimal standalone configurator example
 │   ├── index.html                  # The example page (single file, inline JS)
-│   ├── start.mjs                   # Launcher: static serving (:3000), opens the browser
+│   ├── start.mjs                   # Launcher: build gate, static serving (:3000), MCP server, chat backend
 │   └── README.md                   # How to run the page, its URL parameters
-├── configurator-mcp/               # TypeScript workspace for the MCP server (not implemented yet)
-│   ├── package.json                # typescript, @types/node, the typecheck script
+├── configurator-mcp/               # TypeScript workspace (npm workspaces, vitest)
+│   ├── package.json                # Workspace root: start/test/typecheck scripts
 │   ├── tsconfig.base.json          # Strict ES2022 compiler options for Node
-│   ├── tsconfig.json               # Extends the base; type-checks every .ts file of the workspace
-│   └── README.md                   # What the workspace is for
+│   ├── vitest.config.ts            # Unit tests of both packages
+│   ├── configurator-mcp-server/    # The MCP server: /mcp + /bridge on :3100, the tools undo and redo
+│   │   ├── server.ts               # Entry point
+│   │   ├── configurator-mcp-server.ts # McpServer: instructions, tool registrations
+│   │   ├── tool-executors.ts       # One undo or redo step, confirmed by its history event
+│   │   ├── history-state.ts        # The configurator's undo history state from the page's events
+│   │   ├── configurator-api.ts     # The configurator methods the tools call, relayed to the page
+│   │   ├── page-bridge.ts          # Connected page, call correlation, timeouts
+│   │   ├── types.ts                # WebSocket message protocol
+│   │   └── tests/                  # Unit tests, the fake page socket, the launcher test
+│   ├── configurator-mcp-chat/      # The chat backend: POST /chat on :3200, Mistral, MCP client of the server
+│   │   ├── chat-server.ts          # Entry point
+│   │   ├── chat-config.ts          # The two models, the system prompt, the environment, message parsing
+│   │   ├── chat-handler.ts         # /health, /chat, CORS
+│   │   ├── chat-stream.ts          # MCP client, streamText, the [tool] and [error] lines
+│   │   ├── chat-steps.ts           # Step loop, step log, turn timeout
+│   │   ├── chat-recovery.ts        # What an interrupted reply says about the tool calls
+│   │   └── tests/                  # Unit tests
+│   └── README.md                   # The workspace, file by file
 ├── docs/                           # Living reference for users and developers
-│   └── README.md                   # Index of every document in docs/
-├── package.json                    # Workspace root: start/dev/typecheck/format/lint scripts
+│   ├── README.md                   # Index of every document in docs/
+│   └── configurator-mcp-server.md  # Reference: the page, the MCP server, its tools, the chat
+├── package.json                    # Repository root: start/dev/mcp-server/test/typecheck/format/lint scripts
 ├── README.md                       # Quickstart and usage guide
 ├── AGENTS.md                       # Canonical AI assistant instructions (mirrored by this file)
 ├── CLAUDE.md                       # Redirect to AGENTS.md (for Claude Code)
@@ -125,6 +147,7 @@ The start script (`npm start`) provides:
 │   ├── scripts/                    # Utility scripts (JavaScript only)
 │   │   └── check-markdown-links.js # Checks the relative links of markdown files
 │   └── skills/                     # On-demand domain knowledge
+│       ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
 │       └── roomle-pr-resolution.md # Resolving a pull request's review
 ├── .temp/                          # Scratch space, git-ignored
 ├── .github/
@@ -142,6 +165,7 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 | Skill | Load when the task involves |
 |---|---|
+| [`.agents/skills/configurator-mcp-server.md`](../.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
 | [`.agents/skills/roomle-pr-resolution.md`](../.agents/skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads. Never merge the PR |
 
 ## Key Architecture Patterns
@@ -155,7 +179,14 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 ### The MCP Server
 
-The `configurator-mcp` workspace holds the server once its analysis is done. Its pattern is `hi-mcp/hi-mcp-server` of roomle-hi-example: `@modelcontextprotocol/sdk` with Streamable HTTP, zod-validated tool schemas, tool executors apart from the transport, and the page executing the configurator calls. What the server reads to know a configurator, which tools it offers and how it simplifies docking for the agent is decided by the analysis, not by this file.
+1. **Tools in the server, configurator calls in the page** — The tools run in `configurator-mcp-server` (`@modelcontextprotocol/sdk`, `ws`, run via `vite-node`); the configurator methods they call (`configurator-api.ts`) go over the `/bridge` WebSocket to the page, which executes them on `instance.extended` — only the methods of its `CONFIGURATOR_METHODS` allow-list, the same list the server names
+2. **Streamable HTTP** — `POST /mcp`, JSON response mode, stateless (a new server and transport per request); `?client=<clientId>` binds a request to its page
+3. **The undo history from the configurator** — The page relays the configurator's `onHistoryChange` as `historyChange` events and its last state on connection; the server answers "nothing to undo" from that state and confirms each step by its event
+4. **The bridge protocol of roomle-hi-example** — protocol 2: `hello`, `ready`, `call`, `result`, `event`
+5. **The chat is an MCP client beside the server** — `configurator-mcp-chat` holds the Mistral key and the system prompt and connects to `/mcp` per turn; the page keeps the conversation and feeds the AI Planning Assistant window through `onPlanningAssistantPrompt` and `planningAssistantOutput` of the configurator (roomle-ui)
+6. **Local only** — every process runs on localhost; nothing is deployed
+
+What the server will read to know a configurator — component definitions, items, parameter values, material properties — and how it simplifies docking for the agent is open work of its analysis.
 
 ## Hard Rules
 
@@ -310,21 +341,50 @@ promoted and the document deleted, and the bug's item leaves the backlog.
 
 ```bash
 npm install
-npm start          # or: node minimal-configurator-example/start.mjs
+npm start                            # page :3000 and MCP server :3100
+npm start mistral-medium <api-key>   # plus the chat backend :3200 and the AI Planning Assistant window
+npm start mistral-large <api-key>
+npm run mcp-server                   # the MCP server alone
 ```
 
-This starts the static file serving for `minimal-configurator-example/index.html` on port 3000 and
-opens the browser at <http://localhost:3000/>. `npm run dev` opens the page against the local
-Rubens UI dev server (:5173) instead; `npm start -- --no-open` skips the browser.
+The launcher opens <http://localhost:3000/> (`?chat=true` with a model). `npm run dev`
+opens the page against the local Rubens UI dev server (:5173) instead; `npm start -- --no-open`
+skips the browser. The chat needs a Rubens UI whose configurator has the AI Planning Assistant
+window. Details: [`docs/configurator-mcp-server.md`](../docs/configurator-mcp-server.md).
 
 ### Checks Before Committing
 
 ```bash
-npm run format:check   # Prettier
+npm test               # vitest: the MCP server and the chat backend
+npm run typecheck      # tsc --noEmit on both packages
 npm run lint           # Oxlint
-npm run typecheck      # tsc --noEmit on configurator-mcp
+npm run format:check   # Prettier
 node .agents/scripts/check-markdown-links.js <changed .md files>
 ```
+
+## MCP Client Connection
+
+The server provides its MCP endpoint at `http://localhost:3100/mcp` while it runs; the tools work
+while the example page is open.
+
+| Client | Connection |
+|---|---|
+| Claude Code | `claude mcp add --transport http --scope user configurator-mcp http://localhost:3100/mcp` |
+| GitHub Copilot VS Code | MCP: Open User Configuration → add an HTTP server with that URL |
+| Cursor | Add an HTTP MCP server with that URL |
+
+**Note**: a browser-hosted client cannot reach a localhost server.
+
+## Adding New Tools
+
+1. Register the tool in `configurator-mcp/configurator-mcp-server/configurator-mcp-server.ts` (zod schema, description of how to succeed and what it returns)
+2. Implement its executor in `tool-executors.ts`; a tool that changes the configuration runs one at a time
+3. A configurator method the page does not expose yet: add it to `configurator-api.ts` and to `CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html` — a public method of roomle-ui's `RoomleConfigurator`
+4. Name the tool in the server's instructions and the chat's system prompt when the agent needs to know when to use it
+5. Add or extend the unit tests in the matching `tests/` folder
+6. Update `docs/configurator-mcp-server.md` and `.agents/skills/configurator-mcp-server.md`
+
+Details: [`.agents/skills/configurator-mcp-server.md`](../.agents/skills/configurator-mcp-server.md).
 
 ## Suggested Change Workflow
 
@@ -452,8 +512,9 @@ Examples:
 
 ### Testing
 
-- **Manual Testing**: Start the example page, open it in the browser, check the configurator loads the default item
-- **Unit Testing**: added with the MCP server (vitest in the `configurator-mcp` workspace)
+- **Unit Testing**: vitest over both packages (`configurator-mcp/vitest.config.ts`), tests in each package's `tests/` folder — `npm test`
+- **Manual Testing**: start the launcher, open the page, change a parameter, ask "undo" and "redo" in the AI Planning Assistant window
+- **Tool Testing**: call `undo` and `redo` from an MCP client at `http://localhost:3100/mcp` while the page is open
 
 For automated testing of the example page, use browser DevTools:
 - Console for errors
@@ -465,21 +526,29 @@ For automated testing of the example page, use browser DevTools:
 #### Commands
 
 ```bash
-npm start                # Start the example page and open the browser
-npm run dev              # The page against the local Rubens UI dev server (:5173)
-npm start -- --no-open   # Without opening the browser
-npm run typecheck        # tsc --noEmit on configurator-mcp
-npm run format:check     # Prettier
-npm run lint             # Oxlint
+npm start                            # The example page and the MCP server, browser opens
+npm start mistral-medium <api-key>   # Also the chat backend and the AI Planning Assistant window
+npm run mcp-server                   # The MCP server alone
+npm run dev                          # The page against the local Rubens UI dev server (:5173)
+npm start -- --no-open               # Without opening the browser
+npm test                             # vitest
+npm run typecheck                    # tsc --noEmit on both packages
+npm run format:check                 # Prettier
+npm run lint                         # Oxlint
 ```
 
 #### Port Configuration
 
 - **Example page**: 3000 — change with `EXAMPLE_PORT`
+- **MCP server**: 3100 — change with `CONFIGURATOR_MCP_PORT`
+- **Chat backend**: 3200 — change with `CONFIGURATOR_CHAT_PORT`
 
 #### URLs
 
-- **Example Page**: `http://localhost:3000/`
+- **Example Page**: `http://localhost:3000/` (`?chat=true` with the chat)
+- **MCP Endpoint**: `http://localhost:3100/mcp`
+- **WebSocket Bridge**: `ws://localhost:3100/bridge`
+- **Chat Endpoint**: `http://localhost:3200/chat`
 
 ### Related Resources
 

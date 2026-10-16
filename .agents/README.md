@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Roomle configurator MCP server enables interactive configuration of Roomle objects in the standalone configurator or the isolation mode of the planner, directly in the browser session. An AI agent reads what a configurator can be — its component definitions, the items in their possible children, the parameter values and the material properties — and configures the object through MCP tools: a complete configuration from a configuration JSON, and manipulations such as docking components, deleting components, changing parameters, undo and redo. The pattern is the HI MCP server of [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example); the server itself is not implemented yet.
+The Roomle configurator MCP server enables interactive configuration of Roomle objects in the standalone configurator or the isolation mode of the planner, directly in the browser session. An AI agent reads what a configurator can be — its component definitions, the items in their possible children, the parameter values and the material properties — and configures the object through MCP tools: a complete configuration from a configuration JSON, and manipulations such as docking components, deleting components, changing parameters, undo and redo. The pattern is the HI MCP server of [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example). Today the server offers `undo` and `redo`, and the example's AI Planning Assistant window runs a Mistral chat that calls them.
 
 Every markdown document in this folder, in one place. Add a line here whenever you add a document —
 see **Where Documentation Goes** in [`../AGENTS.md`](../AGENTS.md#where-documentation-goes).
@@ -40,6 +40,7 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 
 | Skill | Description | Load When |
 |---|---|---|
+| [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
 | [roomle-pr-resolution.md](./skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads | Resolving a PR; never merge it |
 
 ### Scripts
@@ -51,7 +52,9 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 ### User-Facing Documentation
 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
-indexed by [docs/README.md](../docs/README.md).
+indexed by [docs/README.md](../docs/README.md):
+
+- [configurator-mcp-server.md](../docs/configurator-mcp-server.md) — The page, the MCP server and its tools, the chat backend, running and connecting them
 
 ---
 
@@ -73,6 +76,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [The configurator example with the AI Planning Assistant chat and a first configurator MCP server](feature-analysis/configurator-example-with-planning-assistant-chat.md) | Implemented — the chat API on the shared callback base and the window in the configurator (roomle-ui), the page as host with a Mistral chat backend, the MCP server with undo and redo; branches not merged | 2026-10-16 |
 
 ### Refactoring Analyses
 
