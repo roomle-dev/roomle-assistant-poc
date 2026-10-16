@@ -48,7 +48,9 @@ export const runHistoryStep = (
       canRedo: history.canRedo,
     });
     const possible = direction === 'undo' ? history.canUndo : history.canRedo;
-    if (!possible) {
+    // An unknown history is the page's to answer: without a page the call
+    // fails with the bridge's connection error.
+    if (history.reported && !possible) {
       return { [done]: false, ...state(), hint: NOTHING_TO[direction] };
     }
     const eventsBefore = history.events;

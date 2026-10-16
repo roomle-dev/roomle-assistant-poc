@@ -31,7 +31,8 @@ The first `npm start` installs the repository and type-checks the server and the
 anything starts. Launcher flags go after `--`: `npm start -- --no-open`,
 `npm start -- mistral-medium <api-key> --no-open`. The API key goes into the chat backend's
 environment, never into the page or its URL. Another model name ends the launcher with the two
-supported names.
+supported names. The servers end with the launcher: when one of them ends, the launcher stops the
+others and exits.
 
 | Variable | Default | What it sets |
 | --- | --- | --- |
@@ -71,8 +72,8 @@ the page as text. The window takes no images.
 
 ## The MCP server
 
-`POST /mcp` speaks Streamable HTTP in JSON response mode, with a new server and transport per
-request. A `client` query parameter binds the request to the page of that `clientId`; a request for
+The server binds to loopback only. `POST /mcp` speaks Streamable HTTP in JSON response mode, with
+a new server and transport per request. A `client` query parameter binds the request to the page of that `clientId`; a request for
 a page that is not connected is answered with `409`. `/bridge` accepts WebSocket upgrades from the
 page origins (`CONFIGURATOR_MCP_PAGE_ORIGINS`, default `http://localhost:3000,http://127.0.0.1:3000`)
 and from origin-less clients. One page is served at a time. A configurator call times out after
@@ -80,8 +81,8 @@ and from origin-less clients. One page is served at a time. A configurator call 
 (`CONFIGURATOR_MCP_PAGE_URL`, set by the launcher).
 
 The server keeps the configurator's undo history state from the page's events: whether an undo and a
-redo are possible, and how many events arrived. A newly accepted page starts with nothing to undo
-until it reports its state.
+redo are possible, and how many events arrived. The state is unknown until the page reports it, and
+again once a page connects anew or disconnects.
 
 ### Tools
 
@@ -90,7 +91,7 @@ until it reports its state.
 | `undo` | Reverts the last change of the configuration, as the configurator's undo button does | `{ undone, canUndo, canRedo, hint? }` |
 | `redo` | Brings back the change the last undo reverted; a new change of the configuration ends redo | `{ redone, canUndo, canRedo, hint? }` |
 
-Both take no arguments and run one at a time. A step that the history state rules out is answered
+Both take no arguments and run one at a time. A step that the reported history state rules out is answered
 without a configurator call: `undone: false` (or `redone: false`) with the hint
 `Nothing to undo: …` (or `Nothing to redo: …`) — a result, not an error. Otherwise the server calls
 the configurator and waits for the history event of the step; the configurator fires it before its

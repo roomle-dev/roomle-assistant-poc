@@ -78,6 +78,15 @@ const STATIC_CONTENT_TYPES = {
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 let shuttingDown = false;
+const children = [];
+
+// The servers end with the launcher, however it ends: a server started from a
+// terminal has no orphan guard and would keep holding its port.
+process.on('exit', () => {
+  for (const child of children) {
+    child.kill();
+  }
+});
 
 const runNpm = (args, cwd) => {
   const result = spawnSync(npmCommand, args, { cwd, stdio: 'inherit' });
@@ -140,9 +149,10 @@ const startServer = (workspace, entrypoint, env) => {
     stdio: 'inherit',
     env,
   });
+  children.push(child);
   child.on('exit', (code) => {
     if (!shuttingDown) {
-      process.exit(code ?? 0);
+      process.exit(code ?? 1);
     }
   });
   return child;
@@ -201,7 +211,7 @@ const main = async () => {
     }
     process.exit(1);
   }
-  const mcpServer = startMcpServer();
+  startMcpServer();
   const chatServer = chat ? startChatServer() : undefined;
   console.log('');
   console.log('  Configurator example ready');
@@ -217,8 +227,6 @@ const main = async () => {
   }
   const shutdown = () => {
     shuttingDown = true;
-    mcpServer.kill();
-    chatServer?.kill();
     process.exit(0);
   };
   process.on('SIGINT', shutdown);

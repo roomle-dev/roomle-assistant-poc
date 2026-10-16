@@ -28,6 +28,7 @@ export class PageBridge {
   private _pendingCalls = new Map<number, PendingCall>();
   private _historyListeners: Array<(undo: boolean, redo: boolean) => void> = [];
   private _pageListeners: Array<() => void> = [];
+  private _pageLostListeners: Array<() => void> = [];
 
   public onHistoryChange(listener: (undo: boolean, redo: boolean) => void) {
     this._historyListeners.push(listener);
@@ -35,6 +36,10 @@ export class PageBridge {
 
   public onPageAccepted(listener: () => void) {
     this._pageListeners.push(listener);
+  }
+
+  public onPageLost(listener: () => void) {
+    this._pageLostListeners.push(listener);
   }
 
   public attachPage(socket: WebSocket): void {
@@ -94,12 +99,21 @@ export class PageBridge {
         }
       }
     });
+    // ws emits 'error' for a malformed frame; unhandled, it would end the
+    // whole server. Terminating the socket hands over to the close handler.
+    socket.on('error', (error) => {
+      console.error(`[configurator-mcp] page socket failed: ${error.message}`);
+      socket.terminate();
+    });
     socket.on('close', () => {
       if (this._page === socket) {
         console.log(`[configurator-mcp] page disconnected: ${this._pageUrl}`);
         this._page = null;
         this._clientId = undefined;
         this._rejectPendingCalls('The configurator page disconnected');
+        for (const listener of this._pageLostListeners) {
+          listener();
+        }
       }
     });
   }

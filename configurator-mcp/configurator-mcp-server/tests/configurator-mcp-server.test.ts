@@ -3,7 +3,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { ConfiguratorApi } from '../configurator-api';
 import { createConfiguratorMcpServer } from '../configurator-mcp-server';
+import { createConfiguratorApi } from '../configurator-api';
 import { HistoryState } from '../history-state';
+import { PageBridge } from '../page-bridge';
 
 const connectClient = async (
   configuratorApi: ConfiguratorApi,
@@ -84,6 +86,19 @@ describe('configurator-mcp-server', () => {
     const again = await client.callTool({ name: 'redo', arguments: {} });
     expect((again as { isError?: boolean }).isError).toBeFalsy();
     expect(JSON.parse(textOf(again)).hint).toMatch(/^Nothing to redo/);
+  });
+
+  it('answers undo without a page with the connection error, not with nothing to undo', async () => {
+    const history = new HistoryState();
+    const client = await connectClient(
+      createConfiguratorApi(new PageBridge()),
+      history
+    );
+
+    const result = await client.callTool({ name: 'undo', arguments: {} });
+    expect((result as { isError?: boolean }).isError).toBe(true);
+    expect(textOf(result)).toContain('No configurator page connected');
+    expect(textOf(result)).not.toContain('Nothing to undo');
   });
 
   it('reports a failed page call as a result the agent can read', async () => {

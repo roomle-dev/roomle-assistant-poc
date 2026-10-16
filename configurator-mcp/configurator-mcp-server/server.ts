@@ -111,7 +111,10 @@ httpServer.on('error', (error: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 
-httpServer.listen(serverPort, () => {
+// The server changes the configuration of the connected page and accepts
+// originless requests, so it binds to loopback only - no other device on the
+// local network can call its tools or take the page bridge.
+httpServer.listen(serverPort, '127.0.0.1', () => {
   console.log('');
   console.log('  Configurator MCP server ready');
   console.log('');

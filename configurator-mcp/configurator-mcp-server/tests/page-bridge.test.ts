@@ -148,6 +148,20 @@ describe('PageBridge page lifecycle', () => {
     expect(bridge.isClientActive('first')).toBe(false);
   });
 
+  it('drops a page whose socket fails instead of ending the server', async () => {
+    const bridge = new PageBridge();
+    const socket = attachPage(bridge);
+    const pending = bridge.call('undo', []);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() =>
+      socket.fail(new Error('Invalid WebSocket frame: RSV1 must be clear'))
+    ).not.toThrow();
+    expect(socket.readyState).toBe(WebSocket.CLOSED);
+    await expect(pending).rejects.toThrow('The configurator page disconnected');
+    vi.restoreAllMocks();
+  });
+
   it('rejects pending calls when the page disconnects', async () => {
     const bridge = new PageBridge();
     const socket = attachPage(bridge);
@@ -193,6 +207,18 @@ describe('PageBridge page lifecycle', () => {
     });
     expect(readyAtAcceptance).toEqual([false]);
     expect(JSON.parse(socket.sent[0])).toEqual({ kind: 'ready' });
+  });
+
+  it('tells its listeners when the active page is lost, not when another socket closes', () => {
+    const bridge = new PageBridge();
+    const listener = vi.fn();
+    bridge.onPageLost(listener);
+    const active = attachPage(bridge);
+    const other = attachPage(bridge);
+    other.close();
+    expect(listener).not.toHaveBeenCalled();
+    active.close();
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('ignores results for unknown call ids', async () => {

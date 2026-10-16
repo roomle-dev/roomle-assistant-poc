@@ -2,11 +2,17 @@ import type { PageBridge } from './page-bridge';
 
 // The configurator's undo history as the page reports it: whether an undo and
 // a redo are possible, from the last history event, and the number of events.
+// Until a page reports it, the state is unknown.
 export class HistoryState {
+  private _reported = false;
   private _canUndo = false;
   private _canRedo = false;
   private _events = 0;
   private _waiters = new Set<() => void>();
+
+  public get reported(): boolean {
+    return this._reported;
+  }
 
   public get canUndo(): boolean {
     return this._canUndo;
@@ -21,6 +27,7 @@ export class HistoryState {
   }
 
   public changed(undo: boolean, redo: boolean): void {
+    this._reported = true;
     this._canUndo = undo;
     this._canRedo = redo;
     this._events += 1;
@@ -29,8 +36,9 @@ export class HistoryState {
     }
   }
 
-  /** A page was accepted: nothing is known of its history until it reports it. */
+  /** A page was accepted or lost: nothing is known of the history until a page reports it. */
   public reset(): void {
+    this._reported = false;
     this._canUndo = false;
     this._canRedo = false;
   }
@@ -65,4 +73,5 @@ export const connectHistoryState = (
 ): void => {
   bridge.onHistoryChange((undo, redo) => history.changed(undo, redo));
   bridge.onPageAccepted(() => history.reset());
+  bridge.onPageLost(() => history.reset());
 };

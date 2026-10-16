@@ -42,6 +42,14 @@ export class FakePageSocket {
     this.emitter.emit('close', code);
   }
 
+  public terminate(): void {
+    this.close();
+  }
+
+  public fail(error: Error): void {
+    this.emitter.emit('error', error);
+  }
+
   public receive(message: unknown): void {
     this.emitter.emit('message', Buffer.from(JSON.stringify(message)));
   }
