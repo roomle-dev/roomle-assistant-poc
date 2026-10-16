@@ -1,0 +1,11 @@
+{
+  "name": "minimal-configurator-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Roomle configurator example page served by a small launcher",
+  "scripts": {
+    "start": "node start.mjs",
+    "dev": "node start.mjs --dev"
+  }
+}

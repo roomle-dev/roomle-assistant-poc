@@ -1,0 +1,19 @@
+{
+  "name": "configurator-mcp-chat",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI chat backend of the configurator example: Mistral via the Vercel AI SDK, tools from the configurator MCP server",
+  "scripts": {
+    "start": "vite-node chat-server.ts",
+    "lint:types": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies": {
+    "@ai-sdk/mcp": "2.0.62",
+    "@ai-sdk/mistral": "4.0.54",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ai": "7.0.122",
+    "vite": "6.4.3",
+    "vite-node": "3.2.4"
+  }
+}

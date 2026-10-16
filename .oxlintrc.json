@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "promise",
+    "node",
+    "vitest"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true
+  },
+  "rules": {
+    "vitest/expect-expect": [
+      "error",
+      { "assertFunctionNames": ["expect", "expect*"] }
+    ],
+    "vitest/require-mock-type-parameters": "off"
+  }
+}
