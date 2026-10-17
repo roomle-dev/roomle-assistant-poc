@@ -72,9 +72,15 @@ describe('getChatConfig', () => {
     });
   });
 
-  it('serves the system prompt of the example, which names the two tools', () => {
+  it('serves the system prompt for product inspection and history changes', () => {
     expect(SYSTEM_PROMPT).toContain('Roomle product configurator');
-    expect(SYSTEM_PROMPT).toContain('two tools, undo and redo');
+    expect(SYSTEM_PROMPT).toContain(
+      'get-configurator-capabilities, undo and redo'
+    );
+    expect(SYSTEM_PROMPT).toContain(
+      'declared alternatives from current kernel choices'
+    );
+    expect(SYSTEM_PROMPT).toContain('unresolved');
   });
 });
 

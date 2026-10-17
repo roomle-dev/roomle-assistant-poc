@@ -35,7 +35,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
-| [get-configurator-capabilities.md](get-configurator-capabilities.md) | Open | The SDK capability collector, recursive component/item discovery, parameter and material data, and the read-only MCP tool |
+| [get-configurator-capabilities.md](get-configurator-capabilities.md) | Implemented, branches not merged | The SDK capability collector, recursive component/item discovery, parameter and material data, and the read-only MCP tool |
 | [configurator-example-with-planning-assistant-chat.md](configurator-example-with-planning-assistant-chat.md) | Implemented, branches not merged | The configurator example as host of roomle-ui's AI Planning Assistant window: the chat API moves to the shared callback base, the example gets a Mistral chat backend and a bridge, the first MCP server offers undo and redo, local only |
 
 Add feature analysis documents as needed following the naming convention:

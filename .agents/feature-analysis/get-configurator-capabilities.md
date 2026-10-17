@@ -8,9 +8,11 @@
 >
 > **Author:** AI Assistant
 >
-> **Status:** Open — proposed contract, no implementation
+> **Status:** Implemented — branches not merged
 >
 > **Scope:** `getConfiguratorCapabilities` in roomle-ui and its read-only MCP tool
+
+Implementation outcome: the SDK collector and read-only MCP tool are implemented on `feat/configurator-capabilities-RML-18085` in both repositories. The roomle-ui branch is based on `feat/configurator-planning-assistant-RML-18085`. The SDK additionally fixes authoritative material-group caching and explicitly projects kernel enum values into JSON. The durable contract is in [the server reference](../../docs/configurator-mcp-server.md#tools) and roomle-ui's `packages/embedding-lib/docs/configurator-capabilities.md`; the architecture decision is [ADR 0001](../decisions/0001-sdk-owned-configurator-capabilities.md). Keep this investigation until the branches are merged; its code references below describe the investigated baseline.
 
 Affected repositories:
 

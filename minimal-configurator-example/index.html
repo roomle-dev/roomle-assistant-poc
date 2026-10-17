@@ -37,7 +37,11 @@
 
       // The configurator methods the MCP server may call on this page; the
       // server names the same methods (configurator-mcp-server/configurator-api.ts).
-      const CONFIGURATOR_METHODS = ['undo', 'redo'];
+      const CONFIGURATOR_METHODS = [
+        'undo',
+        'redo',
+        'getConfiguratorCapabilities',
+      ];
       const BRIDGE_PROTOCOL = 2;
       const TOOL_STATUS_PREFIX = '[tool] ';
       const SESSION_IN_USE = 4409;
@@ -107,6 +111,11 @@
               if (!CONFIGURATOR_METHODS.includes(message.method)) {
                 throw new Error(
                   `Configurator method not exposed: ${message.method}`
+                );
+              }
+              if (typeof instance.extended[message.method] !== 'function') {
+                throw new Error(
+                  `Configurator method ${message.method} is unavailable. Update the Rubens UI to a version that supports this method.`
                 );
               }
               log('call', message.method);

@@ -28,26 +28,92 @@ const textOf = (result: unknown): string =>
 
 const configuratorWith = (history: HistoryState): ConfiguratorApi => ({
   extended: {
+    getConfiguratorCapabilities: vi.fn(async () => ({
+      complete: true,
+      unresolved: [],
+    })),
     undo: vi.fn(async () => history.changed(false, true)),
     redo: vi.fn(async () => history.changed(true, false)),
   },
 });
 
 describe('configurator-mcp-server', () => {
-  it('exposes exactly the tools undo and redo', async () => {
+  it('exposes the read tool and undo and redo', async () => {
     const history = new HistoryState();
     const client = await connectClient(configuratorWith(history), history);
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['redo', 'undo']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'get-configurator-capabilities',
+      'redo',
+      'undo',
+    ]);
+    const read = tools.find(
+      (tool) => tool.name === 'get-configurator-capabilities'
+    );
+    expect(read?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+    expect(read?.inputSchema.properties?.include).toMatchObject({
+      type: 'array',
+      items: {
+        enum: [
+          'configuration',
+          'components',
+          'items',
+          'parameters',
+          'materials',
+          'docking',
+        ],
+      },
+    });
   });
 
-  it('serves instructions that name the configurator and the two tools', async () => {
+  it('serves instructions for inspection and the two history tools', async () => {
     const history = new HistoryState();
     const client = await connectClient(configuratorWith(history), history);
     const instructions = client.getInstructions() ?? '';
     expect(instructions).toContain('Roomle product configurator');
-    expect(instructions).toContain('undo and redo are your only tools');
-    expect(instructions).toContain('only undo and redo are available');
+    expect(instructions).toContain('get-configurator-capabilities');
+    expect(instructions).toContain('Only undo and redo can change');
+    expect(instructions).toContain('unresolved');
+  });
+
+  it('validates read arguments, preserves partial JSON and reports SDK errors', async () => {
+    const history = new HistoryState();
+    const api = configuratorWith(history);
+    const client = await connectClient(api, history);
+    const read = vi.mocked(api.extended.getConfiguratorCapabilities);
+    const partial = {
+      complete: false,
+      unresolved: [{ resourceType: 'component', id: 'missing' }],
+    };
+    read.mockResolvedValue(partial);
+    const result = await client.callTool({
+      name: 'get-configurator-capabilities',
+      arguments: { include: ['components'] },
+    });
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(textOf(result))).toEqual(partial);
+    expect(read).toHaveBeenCalledExactlyOnceWith(['components']);
+    for (const include of [['invalid'], 'parameters', [1]]) {
+      const invalid = await client.callTool({
+        name: 'get-configurator-capabilities',
+        arguments: { include },
+      });
+      expect(invalid.isError).toBe(true);
+    }
+    expect(read).toHaveBeenCalledTimes(1);
+    read.mockRejectedValueOnce(new Error('read again'));
+    const failed = await client.callTool({
+      name: 'get-configurator-capabilities',
+      arguments: {},
+    });
+    expect(failed.isError).toBe(true);
+    expect(textOf(failed)).toContain('read again');
+    await client.close();
   });
 
   it('describes undo and redo with their results and the nothing-to-undo case', async () => {
@@ -106,6 +172,10 @@ describe('configurator-mcp-server', () => {
     history.changed(true, false);
     const api: ConfiguratorApi = {
       extended: {
+        getConfiguratorCapabilities: vi.fn(async () => ({
+          complete: true,
+          unresolved: [],
+        })),
         undo: vi.fn(async () => {
           throw new Error('No configurator page connected.');
         }),

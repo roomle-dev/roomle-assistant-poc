@@ -1,7 +1,15 @@
-import type { ConfiguratorApi } from './configurator-api';
+import type {
+  ConfiguratorApi,
+  ConfiguratorCapabilitySection,
+} from './configurator-api';
 import type { HistoryState } from './history-state';
 
 export type HistoryDirection = 'undo' | 'redo';
+
+export const readConfiguratorCapabilities = (
+  api: ConfiguratorApi,
+  include?: ConfiguratorCapabilitySection[]
+): Promise<unknown> => api.extended.getConfiguratorCapabilities(include);
 
 // The page relays the history event of an undo or redo before the result of
 // the call; the wait only bounds a step the configurator did not take.

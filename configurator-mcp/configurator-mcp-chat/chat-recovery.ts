@@ -3,6 +3,7 @@ import type { ToolExecutionOptions, ToolSet } from 'ai';
 const TOOL_LABELS: Record<string, string> = {
   undo: 'Undo',
   redo: 'Redo',
+  'get-configurator-capabilities': 'Capabilities read',
 };
 
 interface Outcome {
@@ -94,6 +95,17 @@ export const createChatRecovery = (tools: ToolSet) => {
     }
     for (const outcome of outcomes) {
       const label = TOOL_LABELS[outcome.toolName] ?? outcome.toolName;
+      if (outcome.toolName === 'get-configurator-capabilities') {
+        const successful =
+          outcome.status === 'returned' && !outcome.result?.isError;
+        const data = successful ? resultData(outcome.result) : undefined;
+        lines.push(
+          successful
+            ? `- Completed ${label}: ${data?.complete === false ? 'some requested information was unresolved' : 'information was returned'}. The read did not change the configuration.`
+            : `- Incomplete ${label}: ${outcome.status === 'pending' ? 'no result was received' : 'the read failed'}. The read did not change the configuration.`
+        );
+        continue;
+      }
       if (outcome.status === 'returned' && !outcome.result?.isError) {
         const details = resultDetails(resultData(outcome.result));
         lines.push(

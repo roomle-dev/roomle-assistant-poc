@@ -1,9 +1,8 @@
 # Configurator MCP Server — Reference
 
-The configurator MCP server lets an AI agent change a Roomle configuration in a live configurator
+The configurator MCP server lets an AI agent inspect a Roomle configuration and its product options, and undo or redo changes in a live configurator
 session. Its tools call the API of the `RoomleConfigurator` of the roomle-ui web-sdk, and nothing
-else: the connected page executes the calls on the configurator it embeds. The tools are `undo` and
-`redo`.
+else: the connected page executes the calls on the configurator it embeds. The tools are `get-configurator-capabilities`, `undo` and `redo`.
 
 Three processes work together, all local:
 
@@ -45,6 +44,8 @@ A Rubens UI with the configurator's AI Planning Assistant window is needed for t
 starts no chat on a configurator without `planningAssistantOutput` and logs that. Undo and redo
 through an external MCP client work with any configurator.
 
+Capabilities requires a Rubens UI that exposes `RoomleConfigurator.getConfiguratorCapabilities`. If the connected UI is older, the read returns an error naming the method and asking to update the UI; undo and redo remain available. Use `npm run dev` with the local UI feature branch for development.
+
 ## The page
 
 The launcher opens `http://localhost:3000/` (`?chat=true` with a model). The page's own
@@ -58,7 +59,7 @@ The page opens the WebSocket `ws://localhost:<mcp_port>/bridge` and:
 - on `ready`, sends the configurator's last undo history state as a `historyChange` event, and
   enables the window;
 - executes a `call` on `instance.extended` when its method is in `CONFIGURATOR_METHODS`
-  (`undo`, `redo`) and answers with `result`; any other method is refused without touching the
+  (`undo`, `redo`, `getConfiguratorCapabilities`) and answers with `result`; any other method is refused without touching the
   configurator;
 - relays every `onHistoryChange(undo, redo)` of the configurator as a `historyChange` event;
 - reconnects every 3 s after a lost connection; a server that already serves another page closes
@@ -90,8 +91,9 @@ again once a page connects anew or disconnects.
 | --- | --- | --- |
 | `undo` | Reverts the last change of the configuration, as the configurator's undo button does | `{ undone, canUndo, canRedo, hint? }` |
 | `redo` | Brings back the change the last undo reverted; a new change of the configuration ends redo | `{ redone, canUndo, canRedo, hint? }` |
+| `get-configurator-capabilities` | Reads current configuration state and recursively declared product options | JSON with `context`, `complete`, `unresolved` and requested sections |
 
-Both take no arguments and run one at a time. A step that the reported history state rules out is answered
+Undo and redo take no arguments and run one at a time. A step that the reported history state rules out is answered
 without a configurator call: `undone: false` (or `redone: false`) with the hint
 `Nothing to undo: …` (or `Nothing to redo: …`) — a result, not an error. Otherwise the server calls
 the configurator and waits for the history event of the step; the configurator fires it before its
@@ -99,8 +101,17 @@ call returns, and a step without an event within 1 s is reported as `undone: fal
 that the configurator did not report it. A failed configurator call — no page, a lost page, a
 timeout — is a tool error with the message.
 
-The server's instructions tell the agent that it assists the user of a Roomle product configurator,
-that `undo` and `redo` are its only tools, and that it says so when the user asks for more.
+The read tool accepts optional `include`, an array containing `configuration`, `components`, `items`, `parameters`, `materials` or `docking`. Omitted or empty means all; duplicates have no effect. Invalid names are rejected before calling the page.
+
+```json
+{ "name": "get-configurator-capabilities", "arguments": { "include": ["parameters", "materials"] } }
+```
+
+The SDK response passes through as JSON text. `configuration` contains parsed data and runtime instances; `components` and `items` contain the recursively reachable definitions and presets. `parameters` separates declarations from kernel-evaluated current global and per-instance choices. `materials` contains compact metadata and memberships keyed by requested group IDs. `docking` separates declared constraints from currently offered children; it does not calculate valid placements.
+
+Runtime IDs identify instances, while catalog IDs identify definitions and presets. `complete: false` and `unresolved` identify unavailable resources; these are successful partial reads. A missing configuration, HI external object, or configuration/selection change during collection rejects the read. Read again after an edit completes. No selection, configuration or history changes occur, and the read does not wait for a history event or enter the history queue. It may fetch catalog metadata. Configuration-only reads skip catalog discovery.
+
+The server instructions and chat prompt use this tool for product questions. Declared alternatives can be inactive; current choices come from kernel results. The agent must acknowledge unresolved information. Only undo and redo can modify the configuration. The SDK also exposes the read through `instance.configurator` in planner isolation; this example remains a standalone configurator host.
 
 ### Connecting an MCP client
 
@@ -120,7 +131,7 @@ with text content, and the page's `clientId`. Images are refused with `400`. The
 an MCP client to the server with `?client=<clientId>`, so the tools act on that page, and streams
 the model's answer as plain text with a `[tool] <name>` line before each tool call. A failure during
 the stream ends the text with an `[error]` line and a summary of what the tools did in the turn —
-completed or unconfirmed calls, no call repeated. `GET /health` answers `ok`.
+completed or unconfirmed changes, and completed/partial/incomplete reads, with no call repeated. Read recovery explicitly says the configuration was unchanged and omits the capability payload. `GET /health` answers `ok`.
 
 | Variable | Default | What it sets |
 | --- | --- | --- |
@@ -132,9 +143,7 @@ completed or unconfirmed calls, no call repeated. `GET /health` answers `ok`.
 | `CONFIGURATOR_CHAT_TURN_TIMEOUT_MS` | `300000` | A turn without an answer ends after this time |
 
 The system prompt is the example's own (`SYSTEM_PROMPT` in `chat-config.ts`): the assistant of a
-Roomle product configurator with the tools `undo` and `redo`, which reports in one sentence what a
-tool did and whether a further undo or redo is possible, and says for anything else that it can only
-undo and redo. A turn runs up to 16 model steps; the last step may not call a tool, so it ends with
+Roomle product configurator with `get-configurator-capabilities`, `undo` and `redo`. Product answers use returned capabilities; history answers report whether a further undo or redo is possible. Other edits are unavailable. A turn runs up to 16 model steps; the last step may not call a tool, so it ends with
 an answer.
 
 ## Example prompts
@@ -143,7 +152,9 @@ an answer.
 undo
 Take back the last change.
 redo
-Make the shelf blue.     (the assistant answers that it can only undo and redo)
+Which finishes are currently available?
+What additions are declared for this product?
+Make the shelf blue.     (the assistant explains that this edit is not supported yet)
 ```
 
 ## Checking it
