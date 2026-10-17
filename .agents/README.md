@@ -76,6 +76,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Configurator capabilities for the configurator MCP](feature-analysis/get-configurator-capabilities.md) | Open — lazy-loaded SDK capability discovery and the get-configurator-capabilities MCP tool | 2026-10-17 |
 | [The configurator example with the AI Planning Assistant chat and a first configurator MCP server](feature-analysis/configurator-example-with-planning-assistant-chat.md) | Implemented — the chat API on the shared callback base and the window in the configurator (roomle-ui), the page as host with a Mistral chat backend, the MCP server with undo and redo; branches not merged | 2026-10-16 |
 
 ### Refactoring Analyses
