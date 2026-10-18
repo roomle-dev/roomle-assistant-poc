@@ -140,6 +140,8 @@ The start script (`npm start`) provides:
 │   │   └── README.md
 │   ├── bug-analysis/               # Bug root-cause analyses
 │   │   └── README.md
+│   ├── context/                    # Living reference: how the implemented features work today
+│   │   └── README.md               # Feature index
 │   ├── feature-analysis/           # Feature investigations
 │   │   └── README.md
 │   ├── refactoring-analysis/       # Refactoring analyses with reports
@@ -300,6 +302,7 @@ The `.agents/` folder serves as the "digital brain" for roomle-configurator-mcp,
 ├── README.md                     # Digital brain index
 ├── backlog/                      # Open work only
 ├── bug-analysis/                 # Bug root-cause analyses (written before fix)
+├── context/                      # Living reference of the implemented features
 ├── feature-analysis/             # Feature investigations and decisions
 ├── refactoring-analysis/         # Refactoring analyses with reports
 ├── scripts/                      # Utility scripts (JavaScript only)
@@ -334,7 +337,7 @@ A repository the work leaves unchanged is named only where a reader would expect
 | New feature capability | new file in `docs/`, or an update of the document that covers the area, with a line in `docs/README.md` |
 | Architecture decisions | Create a numbered ADR in `.agents/decisions/` (create the folder with the first one) |
 | Open work | `.agents/backlog/README.md` |
-| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge |
+| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge, `.agents/context/` for the living reference of an implemented feature |
 | Wiki page | new file in `.agents/wiki/` with kebab-case slug |
 
 **Important**: Analysis documents in `.agents/bug-analysis/`, `.agents/feature-analysis/`, and `.agents/refactoring-analysis/` are **historical records** — they document the analysis process and decisions, but the durable knowledge should be promoted to living-reference documentation in `docs/` or the skill files.
