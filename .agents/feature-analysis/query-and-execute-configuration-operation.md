@@ -27,7 +27,7 @@ The MCP server configures Roomle objects in the standalone configurator or the p
 mode. The agent is not a user in the UI: it has no mouse, it needs no preview ghosts, it may do
 everything slightly differently, and it may have more options and tools available than the UI offers.
 The UI's interaction model — selecting a possible child, dragging it with the mouse, watching the
-docking previews, dropping it — cannot be replayed by tools. Therefore roomle-ui provides two generic
+docking previews, dropping it — cannot be replayed by tools. Therefore this analysis proposes two generic
 APIs that carry all information and all operations the tools of the MCP server need:
 
 - `queryConfigurationOperation(type, payload)` — specifies the type of query (e.g.
@@ -114,8 +114,13 @@ Two thin, typed methods on `RoomleConfigurator`, implementations dynamically imp
 
 - `queryConfigurationOperation(type, payload)` — read-only; rejects when the target or the state
   changes during the read (as the capabilities read does); never changes selection, configuration or
-  history. Catalog: `configuration`, `componentParameters`, `globalParameters`, `possibleChildren`,
-  `dockingPositions`, `deleteImpact`, `componentDockingPositions`.
+  history. Catalog: `capabilities`, `configuration`, `componentParameters`, `globalParameters`,
+  `possibleChildren`, `dockingPositions`, `deleteImpact`, `componentDockingPositions`. The
+  `capabilities` query delegates to the existing `getConfiguratorCapabilities()`
+  (`roomle-configurator.ts:1546`) and its collector (`common-core/src/mcp-api/configurator-capabilities.ts`),
+  preserving its `include` argument and its result contract (`complete`, `unresolved` and the requested
+  sections, `docs/configurator-mcp-server.md:104`), so the existing `get-configurator-capabilities`
+  tool keeps its product discovery once the bridge is restricted to the two generic methods.
 - `executeConfigurationOperation(name, payload)` — mutating; one operation at a time; lands in the
   undo history; resolves after the kernel processed the operation. Catalog: `changeGlobalParameter`,
   `changeComponentParameter`, `dockComponent`, `deleteComponent`, `dragComponent`, plus
@@ -137,7 +142,12 @@ Implementation notes:
 - Payloads and results are detached JSON without kernel handles, like the capabilities contract
   (`packages/embedding-lib/docs/configurator-capabilities.md`).
 - The MCP server: every tool relays one of the two calls; the page allow-list carries the two method
-  names; tool executors validate `type` / `name` and the payload before calling the page.
+  names; tool executors validate `type` / `name` and the payload before calling the page. Bridge
+  migration: today the allow-list carries `undo`, `redo` and `getConfiguratorCapabilities`
+  (`minimal-configurator-example/index.html:40`, `configurator-api.ts:6`) and the executors call
+  those methods directly (`tool-executors.ts:12`); with the pair implemented, the allow-list carries
+  the two generic names, and the `get-configurator-capabilities` tool routes through
+  `queryConfigurationOperation('capabilities', …)` instead of its own method.
 
 ## Alternatives considered and rejected
 

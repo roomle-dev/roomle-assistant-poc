@@ -2,13 +2,17 @@
 
 The configurator MCP server is restricted to the public API of roomle-ui's `RoomleConfigurator`: its
 tools call configurator methods through the example page's bridge, and the page executes them on
-`instance.extended`. The agent-facing surface is two generic APIs — `queryConfigurationOperation(type,
-payload)` for everything the agent reads, `executeConfigurationOperation(name, payload)` for everything
-it does — because the agent may do everything slightly differently from a user in the UI and may have
-more options and tools available than the UI offers. This page is the map between what an AI agent
-needs to configure a Roomle object — the information it must be able to query at any time and the
-operations it must be able to perform — and the API that exists today: which parts the existing
-methods already cover, and which parts are missing and have to be implemented.
+`instance.extended`. Today the bridge allow-lists exactly three methods — `undo`, `redo` and
+`getConfiguratorCapabilities` (`configurator-mcp/configurator-mcp-server/configurator-api.ts:6`,
+`minimal-configurator-example/index.html:40`). The proposed agent-facing surface is two generic APIs
+— `queryConfigurationOperation(type, payload)` for everything the agent reads,
+`executeConfigurationOperation(name, payload)` for everything it does — because the agent may do
+everything slightly differently from a user in the UI and may have more options and tools available
+than the UI offers. This page is the map between what an AI agent needs to configure a Roomle object
+— the information it must be able to query at any time and the operations it must be able to perform
+— and the API that exists today: which parts the existing methods already cover, and which parts are
+missing and have to be implemented. The two generic APIs and their catalogs are a proposal; where
+this page describes them, it says so.
 
 Paths under `packages/web-sdk/packages/` are relative to that folder of the roomle-ui repository
 (`configurator-core/`, `common-core/`, `planner-core/`, `typings/`). Paths of the MCP server are relative
@@ -17,13 +21,14 @@ that added `getConfiguratorCapabilities`) and this repository at `0b13f9c`.
 
 ## How an MCP tool reaches the configurator
 
-1. A tool executor in `configurator-mcp/configurator-mcp-server/tool-executors.ts` calls
-   `queryConfigurationOperation` or `executeConfigurationOperation` on the API of
-   `configurator-api.ts`, which relays the call over the `/bridge` WebSocket to the connected page.
+Today:
+
+1. A tool executor in `configurator-mcp/configurator-mcp-server/tool-executors.ts` calls a method of
+   `configurator-api.ts` — today `undo`, `redo` or `getConfiguratorCapabilities`
+   (`tool-executors.ts:12`) — which relays the call over the `/bridge` WebSocket to the connected page.
 2. The page executes the call on `instance.extended` — but only for methods in its `CONFIGURATOR_METHODS`
    allow-list (`minimal-configurator-example/index.html:40`). The server names the same methods in
-   `configurator-mcp/configurator-mcp-server/configurator-api.ts`; for the two generic APIs the
-   allow-list carries exactly these two names.
+   `configurator-mcp/configurator-mcp-server/configurator-api.ts:6`.
 3. `instance.extended` is the embedding-lib proxy of the SDK
    (`packages/embedding-lib/src/connector.ts:46`). The Rubens UI announces every public prototype method
    of `RoomleConfigurator` to the embedding host automatically
@@ -31,6 +36,11 @@ that added `getConfiguratorCapabilities`) and this repository at `0b13f9c`.
    exposure list in the SDK — only the two MCP-side allow-lists above.
 4. In the planner's isolation mode the same methods run on the planner's inner configurator
    (`planner-core/src/roomle-planner.ts:711`, `getConfiguratorApi`), exposed as `instance.configurator`.
+
+Proposed — with the two generic APIs, the allow-list carries exactly their two names and every tool is
+one `queryConfigurationOperation` or `executeConfigurationOperation` call; the `get-configurator-capabilities`
+tool then routes through `queryConfigurationOperation('capabilities', …)` (see the query catalog
+below), preserving its `include` argument and result contract.
 
 Adding a tool whose configurator method the page does not expose yet: add the method to
 `configurator-api.ts` and to `CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html`
@@ -80,7 +90,7 @@ The agent may do everything slightly differently from a user in the UI, and it m
 and tools available than the UI offers. The UI's interaction model — selecting a possible child,
 dragging it with the mouse, watching preview ghosts, dropping it — cannot be replayed by tools: the
 agent needs no preview ghost and does not drag with the mouse; it performs operations through tools.
-roomle-ui therefore provides two generic APIs that carry everything the MCP tools need:
+roomle-ui therefore proposes two generic APIs that carry everything the MCP tools need:
 
 - `queryConfigurationOperation(type, payload)` — a read. `type` selects the query, `payload` carries
   the arguments (e.g. a component runtime id), the result is the requested information as JSON.
@@ -88,17 +98,20 @@ roomle-ui therefore provides two generic APIs that carry everything the MCP tool
   carries its arguments (e.g. component id, parameter key, new value), the result confirms the
   operation.
 
-Both live as thin, typed methods on `RoomleConfigurator` (`roomle-configurator.ts`); the
+Both are thin, typed methods on `RoomleConfigurator` (`roomle-configurator.ts`); the
 implementations are dynamically imported from `common-core/src/mcp-api/`, following
 `getConfiguratorCapabilities` (`:1546`) and the `getExternalObjectPlanContext` pattern
-(`planner-core/src/roomle-planner.ts:3185`). The MCP server is restricted to these two methods: every
-tool is one `queryConfigurationOperation` or `executeConfigurationOperation` call relayed through the
-page bridge, and the page allow-list names exactly these two.
+(`planner-core/src/roomle-planner.ts:3185`). With the proposal implemented, the MCP server is
+restricted to these two methods: every tool is one `queryConfigurationOperation` or
+`executeConfigurationOperation` call relayed through the page bridge, and the page allow-list names
+exactly these two. The `capabilities` query preserves the existing `get-configurator-capabilities`
+tool — same `include` argument, same result contract with `complete` and `unresolved`.
 
 ### Query catalog
 
 | `type` | Payload | Returns | Implementation basis |
 |---|---|---|---|
+| `capabilities` | `{ include? }` | the capabilities JSON: `context`, `complete`, `unresolved` and the requested sections — recursive component definitions, item presets, declared alternatives, parameter declarations, material metadata, docking constraints | existing `getConfiguratorCapabilities()` (`roomle-configurator.ts:1546`) and its collector (`common-core/src/mcp-api/configurator-capabilities.ts`) — preserves the `include` argument and the result contract (`docs/configurator-mcp-server.md:104`) |
 | `configuration` | — | current configuration JSON + hash | `getCurrentConfiguration()` (`roomle-configurator.ts:1627`), `getCurrentConfigurationHash()` (`:2130`) |
 | `componentParameters` | `{ runtimeId }` | current parameters incl. groups | `getParametersOfComponent()` (`:2365`) |
 | `globalParameters` | — | current global parameters | `getParametersOfPlanObject()` (`:1563`), `getParametersOfRootComponent()` (`:1599`) |
@@ -126,8 +139,8 @@ The existing typed methods stay — they drive the UI. But several of them are b
 interaction model (`previewDockings` needs a `DragEvent` and the UI-selected possible child,
 `requestDeleteComponent` acts on the selection, `dockComponent` needs a free-flying preview
 component), and the agent's operation set is different and larger (create-and-dock, delete impact,
-re-dock/move, pure docking-position reads). Two generic APIs keep the MCP tool surface stable while
-the SDK internals — and the kernel underneath — evolve, and they let one allow-list entry carry every
+re-dock/move, pure docking-position reads). The proposed pair keeps the MCP tool surface stable while
+the SDK internals — and the kernel underneath — evolve, and it lets one allow-list entry carry every
 tool. Where a typed method already fits, the implementation behind the generic API reuses it.
 
 ### Kernel work
