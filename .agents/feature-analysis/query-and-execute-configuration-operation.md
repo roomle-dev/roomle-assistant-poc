@@ -134,18 +134,17 @@ Implementation notes:
   `:1599`), possible children (`:2503`, `:2525`), parameter changes (`:1578`, `:1443`, `:2287`,
   `:2931`), `loadConfiguration` (`:1214`), `undo`/`redo` (`:2318`, `:2327`).
 - Type and wrap the exposed kernel primitives in `typings/kernel.ts` and the mcp-api implementation:
-  `determinePlanComponentsThatWillBeDeleted`, `dockComponentWithPosition`, `loadPlainComponent`,
-  `loadFreeFlyingConfiguration`, and `deleteComponent` with its re-dock flag. The create-and-dock
-  operation composes `loadPlainComponent` / `loadFreeFlyingConfiguration` + `dockComponentWithPosition`
-  in the SDK (the new runtime id is captured from the existing `Editor3dComponentCreated` callback,
-  so no kernel signature changes); the move operation is `dockComponentWithPosition` on the existing
-  component — the kernel's `DockOperator::dock` undocks a docked child when re-docking
-  (`src/configurator/internal/docking/dock-operator.cpp:146`).
-- The pure dock-pair query needs exactly one new RoomleCore embind entry point — a synchronous
-  `getDockPairsForDockingEntity(targetObjectId, dockingEntityId, allowInsertInBetween)` returning the
-  existing `DockPairPreviewArray` DTO — that runs `DockPreview::evaluate` and the DTO conversion
-  without constructing the preview. Composing possible children plus docking declarations in the SDK
-  would miss collision and insert evaluation and is not enough.
+  `determinePlanComponentsThatWillBeDeleted` (the `deleteImpact` query) and `deleteComponent` with
+  its re-dock flag. The operation catalog (create-and-dock, re-dock/move) is planned separately and
+  must not compose `loadPlainComponent` / `loadFreeFlyingConfiguration` (see the implementation
+  requirements below).
+- The dock-pair queries need exactly one new RoomleCore embind entry point — a synchronous
+  `getDockPairs(targetObjectId, dockingEntity, allowInsertInBetween)` returning the existing
+  `DockPairPreviewArray` DTO — that runs `DockPreview::evaluate` and the DTO conversion without
+  constructing the preview; for a possible child the kernel creates the docking component
+  transiently inside the query, without the deprecated load entry points. Composing possible
+  children plus docking declarations in the SDK would miss collision and insert evaluation and is
+  not enough. The design is in the implementation plan below.
 - Payloads and results are detached JSON without kernel handles, like the capabilities contract
   (`packages/embedding-lib/docs/configurator-capabilities.md`).
 - The MCP server: every tool relays one of the two calls; the page allow-list carries the two method
@@ -191,14 +190,16 @@ roomle-ui:
 
 RoomleCore (kept at a minimum — one new embind function, nothing else):
 
-- `getDockPairsForDockingEntity(targetObjectId, dockingEntityId, allowInsertInBetween)` returning the
-  existing `DockPairPreviewArray` DTO: `configurator.json`, `ConfiguratorKernelEmc`
+- `getDockPairs(targetObjectId, dockingEntity, allowInsertInBetween)` returning the existing
+  `DockPairPreviewArray` DTO: `configurator.json`, `ConfiguratorKernelEmc`
   (`configuratorEmscriptenInterface.h`), kernel implementation reusing `DockPreview::evaluate` and
-  `assembler::newDockPairToPointDto` / `newDockPairToLineDto` without preview construction, with the
-  insert case's undock/restore mirroring `requestPreviewGeometry` + `cancelDocking`
+  `assembler::newDockPairToPointDto` / `newDockPairToLineDto` without preview construction; a
+  possible child is created transiently inside the kernel (no deprecated load entry points, no
+  scene callbacks); the insert case's undock/restore mirrors `requestPreviewGeometry` +
+  `cancelDocking`
 - Catch2 kernel tests for the query
 - no new callback, no new DTO, no runtime-id returns, no dock target for
-  `loadComponentAndDockNewPlanComponents` — the SDK composes all of that from existing primitives
+  `loadComponentAndDockNewPlanComponents`
 
 roomle-configurator-mcp:
 
@@ -242,3 +243,247 @@ reverted. These requirements are binding for the implementation:
   clean entry point that computes the possible docking positions (the dock pairs) — for a possible
   child and for an existing component — without drawing previews and without changing configuration,
   selection or history.
+
+## Implementation plan — `queryConfigurationOperation`
+
+Scope: the query half of the feature only — the read-only `queryConfigurationOperation(type,
+payload)` end to end (RoomleCore → roomle-ui SDK → MCP read tools). `executeConfigurationOperation`
+and the write tools are planned separately. This plan is written under the binding
+[Implementation requirements](#implementation-requirements) above: no `loadFreeFlyingConfiguration` /
+`loadPlainComponent`, no AsyncHelper (none is needed — see section 2), no timeouts, and one clean
+RoomleCore API that generates the possible docking positions.
+
+### 1. The one new RoomleCore API: `getDockPairs`
+
+**Signature** (embind, kernel object):
+
+```
+getDockPairs(
+  targetObjectId: number,
+  dockingEntity: DockPairQuerySource,
+  allowInsertInBetween: boolean,
+): DockPairPreviewArray
+```
+
+`DockPairQuerySource` (typed in the SDK's `typings/kernel.ts`):
+
+- `{ runtimeId: number }` — an existing component of the target configuration (the
+  `componentDockingPositions` query);
+- `{ componentId: string, configuration: string }` — a possible child given as a component
+  definition, `configuration` being the component definition JSON (the `dockingPositions` query,
+  component source);
+- `{ configuration: string }` — a possible child given as an assembly/item configuration (the
+  `dockingPositions` query, item source).
+
+The `dockingEntity` parameter is an `emscripten::val` (precedent: `evaluateJsScript`'s
+`argumentObject`); the generated TS types it `any`, the hand-written `typings/kernel.ts` types it as
+the union. The C++ wrapper reads the descriptor with `isUndefined` / `isNumber` / `isString` checks
+and throws an actionable `KernelException` for an invalid source. The return reuses the existing
+`DockPairPreviewArray` DTO vector type (`configurator.json:666`; the synchronous DTO-vector
+precedent is `getAddOnSpotsForPlanObject`).
+
+**Why one synchronous function covers both sources.** The calculation the preview flow uses is
+`DockPreview::evaluate` (`src/configurator/internal/docking/dock-preview.cpp:17`):
+`PossibleDockPairs::fill` + collision evaluation + insert evaluation. It runs synchronously inside
+`DockConfigurator::requestPreviewGeometry` (`dock-configurator.cpp:836-841`) *before* the
+geometry-ready check; the geometry wait only defers the preview emission (`pendingPreview`,
+`dock-configurator.cpp:841-849`) and triggers a re-evaluation. `DockPreviewConstructor`
+(`dock-preview-constructor.cpp`) only renders and sends the already-evaluated pairs; the
+calculation needs neither it nor any preview construction. So the query reuses
+`DockPreview::evaluate` and the DTO conversion (`assembler::newDockPairToPointDto` /
+`newDockPairToLineDto`, `configuration-assembler.h:27-28`) and skips the whole preview machinery: no
+`add_dock_preview`, no `set_preview_associations`, no `preview_construction_done`.
+
+**Transient child (possible-child sources).** The kernel creates the docking component through the
+same creation path as `loadComponentAndCreatePlanComponents` (`configurator-kernel.cpp:1183`) —
+component definition via `getOrCreateComponentAndHandleErrors`, PlanComponent creation, update
+cycle (parameter values, dockings), bounding-geometry construction
+(`UpdateComponentGeometry::initBoundingGeometry`, the `boundingGeometry` script — synchronous
+RoomleScript, no external-mesh requests) — but attached to a temporary plan object
+(`makeTemporaryObject`) that is never announced: no `addPlanObjectCreated`, no
+`addPlanComponentChanged`, no `objectChangedFromComponent`, no `checkObjectForLoadingDone`.
+`UpdateManager::sendComponentCreated` (`update-manager.cpp:546`) fires only through those queues
+(`addPlanComponentChanged`, `update-manager.cpp:205`), so no `Editor3dComponentCreated` reaches the
+SDK. The plan object and component are destroyed at the end of the call. The SDK therefore performs
+no load, no wait, no listener, no cleanup — the deprecated `loadPlainComponent` /
+`loadFreeFlyingConfiguration` are not touched.
+
+**Existing-component source.** Resolve via `getInternalPlanComponentFromComponentOrObjectId` (the
+same guards as `requestPreviewGeometry`, `dock-configurator.cpp:810-824`). Insert case
+(`allowInsertInBetween` and the component belongs to the target object): the same wrap as
+`requestPreviewGeometry` plus the `cancelDocking` restore — `setTemporaryModifiedObject(true)` + one
+`ConfiguratorChangeAggregator` spanning backup (`createNewAndEmptyDockBackup`) + undock
+(`DockHelper::undockAndCreatFreeFlyingPlanComponent`) + evaluate + restore
+(`removePlanComponentDockBackup` + `DockBackup::restoreDocking`), restoring the original sibling
+order and the cached configuration afterwards, rethrowing after restoring on error. The aggregator
+suppresses `planobject_configuration_updated` (`update-manager.cpp:637`).
+
+**Evaluation fidelity.** Dock pair positions derive from docking declarations and are exact.
+Collision line clipping and insert preview boxes use the docking component's bounding geometry
+(`ComponentConstructor::calcBoundingGeometryBounds`, `component-constructor.cpp:1063`;
+`boundingBoxInScriptSpace`, `possible-dock-pairs.cpp:585-590`), which the transient child gets from
+the synchronous `boundingGeometry` script / `setBoxForMeasurement`. The query never requests or
+awaits external meshes (binding requirement); a child whose bounds depend solely on uncached
+external meshes is evaluated with the bounds available synchronously. The query returns *all*
+evaluated pairs — points and lines, including insert-in-between points — the union of what the
+preview flow emits across its point, line and insert emissions (`DockPreviewConstructor::
+sendDockPreviewPoints` filters insert points that carry a preview box; the query deliberately does
+not), so the agent sees every dockable position.
+
+**Files:** one method entry in `interfaces/emscripten/definition/configurator.json`, one static
+wrapper in `ConfiguratorKernelEmc` (`configuratorEmscriptenInterface.h`, try/catch `KernelException`
+→ `throw_js`), the implementation in `src/configurator/internal/docking/dock-configurator.{h,cpp}`
+with a delegate in `src/configurator/configurator-kernel.{h,cpp}`, then `npm run build:embind` in
+`node/` (generated files are never edited manually).
+
+### 2. roomle-ui — the query API
+
+1. **`packages/web-sdk/packages/typings/kernel.ts`** — type
+   `getDockPairs(targetObjectId: number, dockingEntity: KernelDockPairQuerySource,
+   allowInsertInBetween: boolean): KernelDockPairPreview[]` plus the `KernelDockPairQuerySource`
+   union, and type `determinePlanComponentsThatWillBeDeleted(planComponentId: number,
+   tryDockChildrenToParent: boolean): number[]` (for `deleteImpact`). No other kernel typings are
+   added.
+2. **`packages/web-sdk/packages/common-core/src/configurator-kernel-access.ts`** — wrappers:
+   `getDockPairs(...)` (EmsArray conversion of the vector return), `determineComponentsThatWillBeDeleted(...)`,
+   and `isComponentDeletable(runtimeId)` mirroring the scene manager's
+   `_permissionToDeleteComponent(id, false)` (`configurator-scene-manager.ts:1650`:
+   `permissionToDelete` vs `CORE_PERMISSION_TO_DELETE`, modulated by the `reDock` feature flag;
+   undefined permission → deletable; missing component info → not deletable).
+3. **`packages/web-sdk/packages/common-core/src/mcp-api/configuration-operations-types.ts`** — the
+   query catalog types: `ConfigurationOperationQueryType` (the 8 literals), the per-row payload
+   types, the per-row result types (every result carries `context` of the existing
+   `ConfiguratorCapabilityContext` shape), the `ConfigurationOperationQueryResult` union, and the
+   structural `ConfigurationOperationHost` (a type-only import of the `RoomleConfigurator` shape;
+   only `getChildrenOfPlanComponent` / `getChildrenOfPlanObject` are needed — everything else goes
+   through the kernel access).
+4. **`packages/web-sdk/packages/common-core/src/mcp-api/configuration-operations.ts`** — the
+   dispatcher and the 8 query implementations:
+   - Context capture / assert-freshness mirrors the capabilities collector (same shape, same
+     stale-read rule); the two tiny detach helpers are duplicated deliberately so the capabilities
+     collector stays untouched.
+   - **No AsyncHelper, no timeouts.** The `configuration` query reads
+     `access.getSerializedConfiguration(runtimeId)` + `access.getCurrentConfigurationHash(runtimeId)`
+     — both synchronous, the same reads the capabilities collector performs — instead of
+     `RoomleConfigurator.getCurrentConfiguration()` (`roomle-configurator.ts:1627`), which is
+     AsyncHelper-based. This is the one place the analysis table's implementation basis changes,
+     forced by the binding requirement. `access.getComponentParameters` (reused for
+     `componentParameters` / `globalParameters`, exactly as the capabilities collector does) is
+     async only for external-object validation and uses no AsyncHelper.
+   - **Validation before any kernel/RAPI/scene call:** catalog membership (an unknown type is
+     rejected with the valid catalog), then the payload shape per row (missing/invalid fields
+     named; `child.configuration` must be valid JSON; the source is limited to the three kinds the
+     kernel accepts).
+   - The docking queries call `access.getDockPairs(...)` directly — synchronous — and detach the
+     result. No load, no listener, no wait, no cleanup.
+   - Queries serialize on a plain promise chain (module-level; one query at a time). No AsyncHelper,
+     no timers.
+   - Errors: the same actionable messages as the capabilities read for a missing configuration, a
+     planner outside isolation, and an HI external-object target.
+5. **`packages/web-sdk/packages/configurator-core/src/roomle-configurator.ts`** — the thin public
+   method beside `getConfiguratorCapabilities` (`roomle-configurator.ts:1546`), dynamically
+   importing the implementation (the same pattern).
+6. **`packages/web-sdk/packages/index.ts`** — type-only exports.
+7. **`packages/embedding-lib/docs/configuration-operations.md`** — the query half of the contract
+   document (catalog, payload/result shapes, the context envelope, stale reads, the read-only
+   guarantee, the dock-pair query's semantics), linked from the embedding-lib README.
+
+### 3. roomle-configurator-mcp — the read tools
+
+- **`configurator-api.ts`**: `ConfiguratorApi.extended.queryConfigurationOperation(type, payload?)`
+  — typed forwarding through the page bridge. The server and page allow-lists gain
+  `queryConfigurationOperation`; `undo`, `redo` and `getConfiguratorCapabilities` stay until the
+  operation API lands (the restriction of the allow-list to exactly the two generic names happens
+  with `executeConfigurationOperation`).
+- **Eight read tools, one per query row:** `get-configurator-capabilities` (rerouted through
+  `queryConfigurationOperation('capabilities', …)`, same `include` schema and result contract),
+  `get-configuration`, `get-component-parameters`, `get-global-parameters`,
+  `get-possible-children`, `get-docking-positions`, `get-component-docking-positions`,
+  `get-delete-impact`. Each executor validates its payload with zod before any page call and relays
+  its fixed type/name; every tool is `readOnlyHint: true` + `idempotentHint: true` and never enters
+  the history queue.
+- **Docs:** `docs/configurator-mcp-server.md`, the MCP-server skill, the wiki page
+  `roomle-configurator-api-for-mcp.md` (the proposal becomes the implemented surface for the query
+  half).
+
+### 4. Unit-test plan
+
+**RoomleCore (Catch2)** — `test/configurator/internal/docking/dock-pair-query-test.cpp` (registered
+in `test/CMakeLists.txt`), mirroring the neighbouring `dock-preview-request-test.cpp`:
+
+- possible child, component-definition source: the pairs match the preview flow's own result for the
+  same fixture (drive `requestComponentDockPreview`, capture `set_preview_associations`, compare
+  sets); no preview emissions (`add_dock_preview`, `set_preview_associations`,
+  `preview_construction_done`, `planobject_configuration_updated`); no `component_created`;
+  serialized configuration + hash byte-identical; undo stack unchanged; component count unchanged;
+- possible child, configuration (item) source: the same guarantees;
+- possible child, insert on/off: insert pairs present (`displacedChildId` set) / absent;
+- existing component: pairs match `requestPreviewGeometry`; the insert case restores docking,
+  sibling order and cached configuration (byte-identical configuration + hash);
+- unknown target / unknown entity / invalid source descriptor / invalid child JSON → actionable
+  `KernelException` messages;
+- run the neighbouring `[docking]` suite as regression coverage.
+
+**roomle-ui (Vitest)** —
+`packages/web-sdk/packages/common-core/__tests__/mcp-api/configuration-operations.ts` (mirrors the
+capabilities suite):
+
+- **Q1 validation:** unknown type rejected with the valid catalog; missing `runtimeId`, malformed
+  `child`, invalid JSON, wrong value types rejected before any kernel/RAPI/scene call (mocks assert
+  zero calls);
+- **Q2 configuration:** parsed JSON + hash + context; matches `getSerializedConfiguration`;
+  detached (frozen inputs);
+- **Q3 componentParameters:** parameters + groups detached; view-type enum values preserved;
+  unknown runtime id → actionable error;
+- **Q4 globalParameters:** scope routing on `rootComponentParametersAsGlobal`;
+- **Q5 possibleChildren:** omitted `runtimeId` reads the plan object, given reads the component;
+  default child included; detached;
+- **Q6 dockingPositions / componentDockingPositions:** `getDockPairs` called with
+  `(targetObjectId, source, allowInsertInBetween)`; source mapping per child kind; pairs detached;
+  a changed context mid-read rejects; and the requirement assertions — no load calls
+  (`loadPlainComponent` / `loadFreeFlyingConfiguration` never called), no `addConfiguratorListener`,
+  no `AsyncHelper.waitFor`, no timers (`vi.useFakeTimers`, none scheduled);
+- **Q7 deleteImpact:** both re-dock cases; `deletable` follows the permission/`reDock` logic;
+  `componentIds` resolve from the runtime ids;
+- **Q8 read-only:** no setter/selection/history/save calls; results JSON-round-trip; two overlapping
+  reads keep independent state;
+- **Q9 capabilities:** `include` forwarded; the `complete`/`unresolved`/sections contract preserved;
+- **lifecycle:** no active target, planner outside isolation, HI external-object target → the
+  actionable errors.
+
+**Boundary tests:**
+
+- `packages/web-sdk/packages/configurator-core/__tests__/roomle-configurator.ts` — the public
+  `queryConfigurationOperation` delegates `(type, payload)` and the session dependencies, unchanged
+  result, propagated errors (mirrors the capabilities public-method test);
+- `packages/web-sdk/packages/common-core/__tests__/configurator-kernel-access.ts` — `getDockPairs`
+  (EmsArray conversion, argument order), `determineComponentsThatWillBeDeleted`,
+  `isComponentDeletable` (permission matrix incl. the `reDock` flag);
+- `tests/unit/configurator/embedding/exposed-api.spec.ts` — `queryConfigurationOperation` announced
+  and dispatched in standalone and planner-inner setups;
+- `tests/unit/embedding-lib/connector.spec.ts` — the generated proxy forwards the method with its
+  arguments and the resolved JSON.
+
+**roomle-configurator-mcp (vitest):**
+
+- `configurator-api.test.ts` — the allow-list carries `queryConfigurationOperation`; arguments
+  forwarded; JSON result and client identity preserved;
+- `tool-executors.test.ts` — each read executor validates its payload (zod) and calls the generic
+  API with its fixed type; no history events for reads;
+- `configurator-mcp-server.test.ts` — `tools/list` contains the eight read tools with schemas and
+  `readOnlyHint`/`idempotentHint`; an invalid payload is rejected before any page call; a read
+  result is successful JSON; an SDK error is `isError`;
+- `page-bridge.test.ts` — structured query results round-trip through the fake page; SDK error,
+  disconnection and timeout propagate.
+
+### 5. Validation gates
+
+- **RoomleCore:** build the test target (`scripts/buildCore.sh test debug` or the existing
+  `build-test`), run the new Catch2 file and the `[docking]` suite; `npm run format:c++` before
+  committing.
+- **roomle-ui** (Node 24.12.0 pinned): the Vitest files above with `--run`, `npm run lint`,
+  `npm run format:push`, `npm run build:sdk`, `npm run build`; inspect that the mcp-api
+  implementation stays behind the dynamic import and the built declarations expose the new types.
+- **roomle-configurator-mcp:** `npm test`, `npm run typecheck`, `npm run lint`,
+  `npm run format:check`, `node .agents/scripts/check-markdown-links.js` on changed markdown.
+- Commits per repository on the existing feature branches; no push, no pull request.
