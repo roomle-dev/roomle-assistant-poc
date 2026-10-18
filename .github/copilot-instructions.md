@@ -270,6 +270,21 @@ Rules:
 - A bug analysis of wrong content an agent created names the instruction or the part of the tool
   API that led the agent there. "The server accepted it" is not a root cause.
 
+## General-Purpose Policy
+
+The MCP server is for **general purposes**. There is one MCP server for every
+configurator; it must not contain information about a specific configurator.
+
+This policy exists so that bugs in the MCP server can be fixed from specific bug
+reports. A bug fix must **never** involve adding specific information about the
+malfunctioning configurator to resolve the issue — that is a hack and is
+absolutely forbidden.
+
+If a configurator behaves specially and this needs to be communicated to the AI
+agent, the information must come from the configurator's own components and
+items. In future, it may be necessary to add descriptions for the MCP server to
+the components of a configurator.
+
 ## Where Documentation Goes
 
 Documentation lives in markdown files under `docs/` and `.agents/`, never in code comments.
