@@ -3,7 +3,11 @@ import type { ConfiguratorApi } from '../configurator-api';
 import { createConfiguratorApi } from '../configurator-api';
 import { connectHistoryState, HistoryState } from '../history-state';
 import { PageBridge } from '../page-bridge';
-import { HISTORY_EVENT_WAIT_MS, runHistoryStep } from '../tool-executors';
+import {
+  HISTORY_EVENT_WAIT_MS,
+  runHistoryStep,
+  readConfiguratorCapabilities,
+} from '../tool-executors';
 import { attachPage, historyEvent } from './fake-page-socket';
 
 // A configurator page whose undo and redo report the history as the
@@ -11,6 +15,10 @@ import { attachPage, historyEvent } from './fake-page-socket';
 const createConfigurator = (history: HistoryState) => {
   const api: ConfiguratorApi = {
     extended: {
+      getConfiguratorCapabilities: vi.fn(async () => ({
+        complete: true,
+        unresolved: [],
+      })),
       undo: vi.fn(async () => history.changed(false, true)),
       redo: vi.fn(async () => history.changed(true, false)),
     },
@@ -23,6 +31,33 @@ afterEach(() => {
 });
 
 describe('runHistoryStep', () => {
+  it('reads complete or partial capabilities without waiting for a history event', async () => {
+    const history = new HistoryState();
+    const api = createConfigurator(history);
+    const events = vi.spyOn(history, 'waitForEvents');
+    for (const complete of [true, false]) {
+      const result = {
+        complete,
+        unresolved: complete ? [] : [{ id: 'missing' }],
+      };
+      vi.mocked(api.extended.getConfiguratorCapabilities).mockResolvedValueOnce(
+        result
+      );
+      expect(await readConfiguratorCapabilities(api, ['materials'])).toBe(
+        result
+      );
+    }
+    expect(events).not.toHaveBeenCalled();
+    expect(api.extended.undo).not.toHaveBeenCalled();
+    expect(api.extended.getConfiguratorCapabilities).toHaveBeenLastCalledWith([
+      'materials',
+    ]);
+    vi.mocked(api.extended.getConfiguratorCapabilities).mockRejectedValueOnce(
+      new Error('stale')
+    );
+    await expect(readConfiguratorCapabilities(api)).rejects.toThrow('stale');
+  });
+
   it('runs undo on the page and reports the history state the page sent after it', async () => {
     const history = new HistoryState();
     history.changed(true, false);
@@ -119,6 +154,10 @@ describe('runHistoryStep', () => {
     history.changed(true, false);
     const api: ConfiguratorApi = {
       extended: {
+        getConfiguratorCapabilities: vi.fn(async () => ({
+          complete: true,
+          unresolved: [],
+        })),
         undo: vi.fn(async () => {
           throw new Error('The configurator page disconnected');
         }),
@@ -136,7 +175,14 @@ describe('runHistoryStep', () => {
     const history = new HistoryState();
     history.changed(true, false);
     const api: ConfiguratorApi = {
-      extended: { undo: vi.fn(async () => undefined), redo: vi.fn() },
+      extended: {
+        getConfiguratorCapabilities: vi.fn(async () => ({
+          complete: true,
+          unresolved: [],
+        })),
+        undo: vi.fn(async () => undefined),
+        redo: vi.fn(),
+      },
     };
 
     const step = runHistoryStep(api, history, 'undo');
@@ -157,6 +203,10 @@ describe('runHistoryStep', () => {
     let finishUndo = () => {};
     const api: ConfiguratorApi = {
       extended: {
+        getConfiguratorCapabilities: vi.fn(async () => ({
+          complete: true,
+          unresolved: [],
+        })),
         undo: vi.fn(
           () =>
             new Promise<void>((resolve) => {

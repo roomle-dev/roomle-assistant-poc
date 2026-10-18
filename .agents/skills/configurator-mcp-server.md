@@ -39,6 +39,15 @@ MCP server (configurator-mcp-server, :3100) ──┘
 - **The page owns the conversation** and the window owns the display; roomle-ui provides the window
   and no system prompt.
 
+## Capabilities read
+
+- `get-configurator-capabilities` forwards optional `include` (configuration, components, items, parameters, materials, docking) to `getConfiguratorCapabilities` and returns its JSON. Omitted/empty requests all sections.
+- Reads bypass the history queue and event wait. Preserve `clientId`, arguments, results and failures; keep undo/redo's void relay contract.
+- The SDK owns discovery and validity. Its collector is dynamically imported in roomle-ui; do not duplicate product interpretation in the MCP server. Declared alternatives can be inactive, current choices are kernel results, and `complete: false` / `unresolved` stay successful partial reads.
+- The tool is annotated read-only, non-destructive, idempotent and open-world because catalog metadata may be requested. Log operation summaries, never the full catalog payload.
+- An older UI without the method receives an update message from the page. The protocol stays at version 2 and the bridge deadline stays at 30 seconds.
+- Both server instructions and the chat prompt permit product inspection. Chat recovery describes failed/pending reads as incomplete, never as unconfirmed modifications; it omits catalog payloads and preserves outcomes of undo/redo in mixed turns.
+
 ## Adding a tool
 
 1. Register it in `configurator-mcp-server.ts` (`server.registerTool`, a zod raw shape as

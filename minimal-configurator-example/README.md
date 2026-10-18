@@ -9,6 +9,8 @@ of roomle-ui: the same page skeleton, a configurator instead of a planner, and n
 the page of the configurator MCP server, with `chat=true` also the host of the AI Planning
 Assistant window — see [the reference](../docs/configurator-mcp-server.md#the-page).
 
+The page relays `getConfiguratorCapabilities`, `undo` and `redo`. The read requires a Rubens UI that exposes `getConfiguratorCapabilities`; an older UI receives an actionable update error for that method. The MCP tool accepts optional section names and returns the SDK's JSON without changing the product or its history. See [the tools reference](../docs/configurator-mcp-server.md#tools) for the contract and partial-result handling.
+
 ## Run it
 
 The example must be served over HTTP (ES module imports don't work from `file://`). The launcher

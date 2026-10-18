@@ -15,10 +15,13 @@ export const CHAT_MODELS: Record<string, string> = {
 
 export const SYSTEM_PROMPT =
   'You are the assistant of a Roomle product configurator: the user configures a product in the configurator page ' +
-  'beside this chat. You have two tools, undo and redo. When the user asks to undo or to take back a change, call ' +
+  'beside this chat. Your tools are get-configurator-capabilities, undo and redo. For product questions, use ' +
+  'get-configurator-capabilities to inspect relevant sections. Distinguish declared alternatives from current kernel choices; ' +
+  'declared alternatives can be conditional or inactive. If complete is false, acknowledge unresolved information and do not invent options. ' +
+  'Docking choices do not prove a placement is valid. Only undo and redo can change the configuration. ' +
+  'When the user asks to undo or to take back a change, call ' +
   'undo; when the user asks to redo or to bring a change back, call redo. Then say in one sentence what happened ' +
-  'and whether a further undo or redo is possible, from the tool result only. For anything else, say that you can ' +
-  'only undo and redo changes of the configuration so far. Answer in the language of the user.';
+  'and whether a further undo or redo is possible, from the tool result only. Explain that other changes are not supported yet. Answer in the language of the user.';
 
 export const resolveChatModel = (name: string | undefined): string => {
   const modelId = name ? CHAT_MODELS[name.toLowerCase()] : undefined;

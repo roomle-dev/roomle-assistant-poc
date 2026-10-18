@@ -1,13 +1,22 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { CAPABILITY_SECTIONS } from './configurator-api';
 import type { ConfiguratorApi } from './configurator-api';
 import type { HistoryState } from './history-state';
-import { type HistoryDirection, runHistoryStep } from './tool-executors';
+import {
+  type HistoryDirection,
+  runHistoryStep,
+  readConfiguratorCapabilities,
+} from './tool-executors';
 
 export const INSTRUCTIONS =
   'You assist the user of a Roomle product configurator: the product the user configures in the configurator page. ' +
-  'The tools undo and redo are your only tools. undo reverts the last change of the configuration, as the ' +
+  'Use get-configurator-capabilities to inspect the current configuration and product options. ' +
+  'Declared alternatives may be conditional or inactive; use current kernel choices for what is available now. ' +
+  'Acknowledge unresolved resources when complete is false; never invent missing options or docking placements. ' +
+  'Only undo and redo can change the configuration. undo reverts the last change of the configuration, as the ' +
   "configurator's undo button does; redo brings back the change the last undo reverted. Nothing else of the " +
-  'configuration can be read or changed yet - when the user asks for more, say that only undo and redo are available.';
+  'configuration can be changed yet.';
 
 const UNDO_DESCRIPTION =
   "Reverts the last change of the configuration, as the configurator's undo button does; call it again to revert " +
@@ -51,6 +60,35 @@ export const createConfiguratorMcpServer = (
     'redo',
     { description: REDO_DESCRIPTION, inputSchema: {} },
     () => runTool('redo')
+  );
+
+  server.registerTool(
+    'get-configurator-capabilities',
+    {
+      description:
+        'Reads the connected native Roomle configuration, recursive component/item alternatives, declared and current parameters, material metadata and docking choices. Optional include selects sections; omitted or empty means all. The result includes context, complete and unresolved. This read changes no configuration, selection or history. Declared alternatives are not guaranteed current choices or valid docking placements.',
+      inputSchema: { include: z.array(z.enum(CAPABILITY_SECTIONS)).optional() },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async ({ include }) => {
+      console.log(
+        '[configurator-mcp] tool get-configurator-capabilities',
+        include ?? 'all'
+      );
+      const result = await readConfiguratorCapabilities(
+        configuratorApi,
+        include
+      );
+      console.log(
+        '[configurator-mcp] tool get-configurator-capabilities returned'
+      );
+      return textResult(result);
+    }
   );
 
   return server;

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Roomle configurator MCP server enables interactive configuration of Roomle objects in the standalone configurator or the isolation mode of the planner, directly in the browser session. An AI agent reads what a configurator can be — its component definitions, the items in their possible children, the parameter values and the material properties — and configures the object through MCP tools: a complete configuration from a configuration JSON, and manipulations such as docking components, deleting components, changing parameters, undo and redo. The pattern is the HI MCP server of [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example). Today the server offers `undo` and `redo`, and the example's AI Planning Assistant window runs a Mistral chat that calls them.
+The Roomle configurator MCP server enables interactive configuration of Roomle objects in the standalone configurator or the isolation mode of the planner, directly in the browser session. An AI agent reads what a configurator can be — its component definitions, the items in their possible children, the parameter values and the material properties — and configures the object through MCP tools: a complete configuration from a configuration JSON, and manipulations such as docking components, deleting components, changing parameters, undo and redo. The pattern is the HI MCP server of [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example). Today the server offers `get-configurator-capabilities`, `undo` and `redo`, and the example's AI Planning Assistant window runs a Mistral chat that calls them.
 
 Every markdown document in this folder, in one place. Add a line here whenever you add a document —
 see **Where Documentation Goes** in [`../AGENTS.md`](../AGENTS.md#where-documentation-goes).
@@ -29,6 +29,7 @@ ADR documents in `.agents/decisions/` as needed, following the
 
 | ADR | Status |
 |---|---|
+| [0001 — SDK-owned configurator capabilities](decisions/0001-sdk-owned-configurator-capabilities.md) | Accepted |
 
 ---
 
@@ -76,6 +77,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Configurator capabilities for the configurator MCP](feature-analysis/get-configurator-capabilities.md) | Implemented — SDK capability discovery and MCP read tool; branches not merged | 2026-10-17 |
 | [The configurator example with the AI Planning Assistant chat and a first configurator MCP server](feature-analysis/configurator-example-with-planning-assistant-chat.md) | Implemented — the chat API on the shared callback base and the window in the configurator (roomle-ui), the page as host with a Mistral chat backend, the MCP server with undo and redo; branches not merged | 2026-10-16 |
 
 ### Refactoring Analyses

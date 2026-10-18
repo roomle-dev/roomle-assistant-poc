@@ -5,6 +5,40 @@ import { BRIDGE_PROTOCOL } from '../types';
 import { attachPage, FakePageSocket, historyEvent } from './fake-page-socket';
 
 describe('PageBridge.call', () => {
+  it('round-trips capability arguments and structured JSON and propagates SDK errors', async () => {
+    const bridge = new PageBridge();
+    const socket = attachPage(bridge, { clientId: 'reader' });
+    const result = {
+      complete: true,
+      unresolved: [],
+      components: { 'test:root': { label: 'Root' } },
+    };
+    socket.respond = vi.fn(() => result);
+    expect(
+      await bridge.call(
+        'getConfiguratorCapabilities',
+        [['components']],
+        undefined,
+        'reader'
+      )
+    ).toEqual(result);
+    expect(socket.respond).toHaveBeenCalledExactlyOnceWith(
+      'getConfiguratorCapabilities',
+      [['components']]
+    );
+    socket.respond = undefined;
+    const pending = bridge.call('getConfiguratorCapabilities', []);
+    const call = JSON.parse(socket.sent.at(-1)!);
+    socket.receive({
+      kind: 'result',
+      id: call.id,
+      ok: false,
+      error: 'Update the Rubens UI',
+    });
+    await expect(pending).rejects.toThrow('Update the Rubens UI');
+    socket.close();
+  });
+
   it('rejects with the example URL when no page is connected', async () => {
     vi.stubEnv('CONFIGURATOR_MCP_PAGE_URL', undefined);
     vi.stubEnv('CONFIGURATOR_MCP_PORT', undefined);

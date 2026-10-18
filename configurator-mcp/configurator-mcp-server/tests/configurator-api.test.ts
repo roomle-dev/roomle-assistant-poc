@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CONFIGURATOR_METHODS,
   createConfiguratorApi,
+  type ConfiguratorCapabilitySection,
 } from '../configurator-api';
 import type { PageBridge } from '../page-bridge';
 
@@ -25,6 +26,34 @@ const pageAllowList = (): string[] => {
 };
 
 describe('createConfiguratorApi', () => {
+  it.each([undefined, [], ['parameters', 'materials']] as (
+    | ConfiguratorCapabilitySection[]
+    | undefined
+  )[])(
+    'forwards capabilities include %j and preserves JSON and browser identity',
+    async (include) => {
+      const result = {
+        complete: false,
+        unresolved: [{ id: 'missing' }],
+        parameters: { current: {} },
+      };
+      const bridge = createMockBridge();
+      vi.mocked(bridge.call).mockResolvedValue(result);
+      expect(
+        await createConfiguratorApi(
+          bridge,
+          'this-page'
+        ).extended.getConfiguratorCapabilities(include)
+      ).toBe(result);
+      expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
+        'getConfiguratorCapabilities',
+        include === undefined ? [] : [include],
+        undefined,
+        'this-page'
+      );
+    }
+  );
+
   it('forwards undo and redo without arguments and with the default timeout', async () => {
     const bridge = createMockBridge();
     const { extended } = createConfiguratorApi(bridge);

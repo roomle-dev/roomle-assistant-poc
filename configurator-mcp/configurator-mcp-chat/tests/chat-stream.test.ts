@@ -133,6 +133,38 @@ afterEach(() => {
 });
 
 describe('chat stream', () => {
+  it('passes capability JSON to the model before it answers a product question', async () => {
+    const capabilities = {
+      complete: true,
+      unresolved: [],
+      materials: { byId: { 'test:oak': { label: 'Oak' } } },
+    };
+    const read = vi.fn(async () => mcpResult(capabilities));
+    mocks.tools = { 'get-configurator-capabilities': fakeTool(read) };
+    const model = toolThenAnswer(
+      [call('get-configurator-capabilities')],
+      'Oak is available.'
+    );
+    mocks.model = model;
+    expect(await response()).toContain('Oak is available.');
+    expect(JSON.stringify(model.doStreamCalls[1].prompt)).toContain('test:oak');
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it('recovers an interrupted answer after a read without suggesting a mutation', async () => {
+    mocks.tools = {
+      'get-configurator-capabilities': fakeTool(async () =>
+        mcpResult({ complete: false, unresolved: [{ id: 'missing' }] })
+      ),
+    };
+    mocks.model = failingModel([call('get-configurator-capabilities')]);
+    const answer = await response();
+    expect(answer).toContain('Completed Capabilities read');
+    expect(answer).toContain('unresolved');
+    expect(answer).toContain('read did not change the configuration');
+    expect(answer).not.toContain('Unconfirmed');
+  });
+
   it('passes the system prompt of the backend as instructions and the MCP tools to streamText', async () => {
     const undo = vi.fn(async () =>
       mcpResult({ undone: true, canUndo: false, canRedo: true })
