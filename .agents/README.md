@@ -41,9 +41,14 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 
 | Skill | Description | Load When |
 |---|---|---|
+| [analysis.md](./skills/analysis.md) | Analyse the bug, feature, or refactoring: trace to the origin, write the analysis document before any code change | "analyse the bug/feature/refactoring", "analyze...", "bug/feature/refactoring analysis" |
+| [plan-implementation.md](./skills/plan-implementation.md) | Plan an implementation with unit tests — the plan is a ticket comment or a message, never a document | Planning a task or implementation |
+| [cleanup-backlog.md](./skills/cleanup-backlog.md) | Sweep the backlog: verify every item against the code, remove what landed, strip history, refresh references | "cleanup backlog", "clean up the backlog", "backlog cleanup" |
 | [analysis-cleanup.md](./skills/analysis-cleanup.md) | Closing out landed bug, feature and refactoring analyses: promoting the durable outcome into `.agents/context`, living reference and decisions, then deleting the analysis | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
-| [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
 | [roomle-pr-resolution.md](./skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads | Resolving a PR; never merge it |
+| [analysis-closeout.md](./skills/analysis-closeout.md) | Close out a single analysis document at commit time: verify it landed, promote the durable outcome, delete the document | Work with an analysis document is being committed |
+| [github-workflow.md](./skills/github-workflow.md) | Git staging, conventional commits, pre-commit checklist, PR guidelines | Before every commit, push, or pull request |
+| [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
 
 ### Scripts
 
@@ -107,6 +112,15 @@ done. The analysis and the report are the same document — the report is append
 | Document | Status | Last touched |
 |---|---|---|
 
+### Benchmarks
+
+Performance measurements. Each document keeps its benchmark data in a folder of the same name.
+Benchmarks are historical records — they measure a point in time and are never updated.
+
+| Document | Date | Summary |
+|---|---|---|
+| — | — | No benchmarks |
+
 ### Backlog
 
 Outstanding defects, optimizations and follow-ups for roomle-configurator-mcp.
@@ -121,11 +135,15 @@ Outstanding defects, optimizations and follow-ups for roomle-configurator-mcp.
 
 ### Trigger Phrases
 
-The following phrases trigger the analysis workflow automatically:
+The following phrases trigger the workflow automatically — the phrase alone means *execute the whole procedure*:
 
-- **"analyse the bug"** / **"analyze the bug"** / **"bug analysis"** → Creates document in `.agents/bug-analysis/`
-- **"analyse the feature"** / **"analyze the feature"** / **"feature analysis"** → Creates document in `.agents/feature-analysis/`
-- **"analyse the refactoring"** / **"analyze the refactoring"** / **"refactoring analysis"** → Creates document in `.agents/refactoring-analysis/`
+| Trigger phrase | Skill | Folder |
+|---|---|---|
+| "analyse the bug" / "analyze the bug" / "bug analysis" | [`analysis`](skills/analysis.md) | `.agents/bug-analysis/` |
+| "analyse the feature" / "analyze the feature" / "feature analysis" | [`analysis`](skills/analysis.md) | `.agents/feature-analysis/` |
+| "analyse the refactoring" / "analyze the refactoring" / "refactoring analysis" | [`analysis`](skills/analysis.md) | `.agents/refactoring-analysis/` |
+| "cleanup backlog" / "clean up the backlog" / "backlog cleanup" | [`cleanup-backlog`](skills/cleanup-backlog.md) | `.agents/backlog/` |
+| "cleanup analyses" / "clean up the analyses" / "analysis cleanup" | [`analysis-cleanup`](skills/analysis-cleanup.md) | all three analysis folders |
 
 ### Document Lifecycle
 
@@ -187,8 +205,12 @@ named only where a reader would expect a change. Beyond that, the document shoul
 |---|---|---|
 | **Living reference** — how things work now | `.agents/skills/`, `.agents/context/` or `docs/` | Updated when behaviour changes; says what holds today — never what was wrong, when something was solved, or a ticket number |
 | **Wiki page** — a durable answer to a recurring question | `.agents/wiki/` | Living reference; not an analysis, no lifecycle |
-| **Historical record** — analysis, benchmark, refactoring | `.agents/<analysis-type>/` | Never updated after close-out; deleted once the work has landed |
-| **Decision** — why code is shaped this way | `.agents/decisions/` (create folder if needed) | Living reference |
+| **Bug analysis** | `.agents/bug-analysis/` | Historical record; deleted once the fix has landed |
+| **Feature analysis** | `.agents/feature-analysis/` | Historical record; deleted once the work has landed |
+| **Refactoring analysis** | `.agents/refactoring-analysis/` | Historical record; deleted once the work has landed |
+| **Benchmark** — performance measurement | `.agents/benchmarks/` | Historical record; never updated after the measurement |
+| **Decision** — why code is shaped this way | `.agents/decisions/` | Living reference |
+| **Image** — referenced by a document | `.agents/images/` | Kept as long as the referencing document exists |
 | **Open work** | `.agents/backlog/README.md` | Removed when the fix is in the code |
 
 ## Adding New Documentation
@@ -199,7 +221,10 @@ named only where a reader would expect a change. Beyond that, the document shoul
 2. **Bug Analysis**: Add to `.agents/bug-analysis/` before fixing
 3. **Feature Analysis**: Add to `.agents/feature-analysis/` before implementing
 4. **Refactoring Analysis**: Add to `.agents/refactoring-analysis/` before refactoring
-5. **Update this index**: Add a line to the appropriate table
+5. **ADR**: Add to `.agents/decisions/` with the next sequential number
+6. **Benchmark**: Add to `.agents/benchmarks/` with a data folder of the same name
+7. **Image**: Add to `.agents/images/` with a descriptive kebab-case name
+8. **Update this index**: Add a line to the appropriate table
 
 ### For End Users
 
@@ -208,4 +233,3 @@ Add to the `docs/` folder and its [index](../docs/README.md), and update the mai
 ## See Also
 
 - [AGENTS.md](../AGENTS.md) — AI assistant instructions and workflow
-- [.github/copilot-instructions.md](../.github/copilot-instructions.md) — GitHub Copilot specific guidance
