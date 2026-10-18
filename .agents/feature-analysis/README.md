@@ -10,6 +10,7 @@ Triggered by **"analyse the feature"** / **"analyze the feature"** / **"feature 
 
 Point-in-time, decision-driving write-ups. The document must cover:
 
+- the affected repositories, named first: one line per repository the work changes, saying what changes there
 - what was asked and why
 - how the area works today, with code/file references
 - the gap or question the analysis answers

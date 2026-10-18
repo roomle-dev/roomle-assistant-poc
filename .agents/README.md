@@ -151,7 +151,10 @@ Use kebab-case for document filenames:
 
 ### Document Structure
 
-Every analysis document should include:
+Every analysis document names the **affected repositories first**, right after its header block: a
+short list of the repositories the work changes, one line each saying what changes there (for
+example roomle-ui, roomle-configurator-mcp, RoomleCore). A repository the work leaves unchanged is
+named only where a reader would expect a change. Beyond that, the document should include:
 
 **Bug Analysis:**
 - Symptom and reproduction

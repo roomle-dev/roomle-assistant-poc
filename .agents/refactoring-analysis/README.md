@@ -12,6 +12,7 @@ Triggered by **"analyse the refactoring"** / **"analyze the refactoring"** /
 
 The analysis must cover:
 
+- the affected repositories, named first: one line per repository the work changes, saying what changes there
 - what the current code does and why it is a problem
 - the full scope of the change, with file references for every affected location
 - the proposed target shape

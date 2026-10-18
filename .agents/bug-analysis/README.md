@@ -9,6 +9,7 @@ Triggered by **"analyse the bug"** / **"analyze the bug"** / **"bug analysis"** 
 
 Point-in-time, investigation-driving write-ups. The document must cover:
 
+- the affected repositories, named first: one line per repository the work changes, saying what changes there
 - symptom and reproduction steps
 - investigation trace with code references
 - the exact root cause (file:line)

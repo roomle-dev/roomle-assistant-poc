@@ -24,6 +24,11 @@ analysis closes out the same way once its rejected approach is recorded as an AD
 
 ## What counts as landed — never guess
 
+An analysis always includes **which repositories are affected**, named first right after its header
+block — one line per repository the work changes, saying what changes there (for example roomle-ui,
+roomle-configurator-mcp, RoomleCore). The list is the verification map: the landed work is checked in
+each named repository.
+
 A document counts as landed only when all of these hold:
 
 - The commit is reachable: `git log --oneline --grep=<slug>`, `git merge-base --is-ancestor <sha>
