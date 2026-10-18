@@ -50,6 +50,15 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 |---|---|
 | [check-markdown-links.js](./scripts/check-markdown-links.js) | Checks the relative links of markdown files: `node .agents/scripts/check-markdown-links.js <file.md> …` |
 
+### Wiki
+
+Living-reference pages that answer a recurring question once — an API map, a contract between
+repositories, a data-flow summary. Not an analysis: no lifecycle, updated when the behaviour changes.
+
+| Page | Covers |
+|---|---|
+| [The roomle-ui configurator API for the MCP server](./wiki/roomle-configurator-api-for-mcp.md) | The queries and operations the MCP server needs, which parts of roomle-ui's `RoomleConfigurator` public API already cover them, and which parts are missing |
+
 ### User-Facing Documentation
 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
@@ -164,6 +173,7 @@ Every analysis document should include:
 | What you produced | Where it goes | Lifecycle |
 |---|---|---|
 | **Living reference** — how things work now | `.agents/skills/` or `docs/` | Updated when behaviour changes; says what holds today — never what was wrong, when something was solved, or a ticket number |
+| **Wiki page** — a durable answer to a recurring question | `.agents/wiki/` | Living reference; not an analysis, no lifecycle |
 | **Historical record** — analysis, benchmark, refactoring | `.agents/<analysis-type>/` | Never updated after close-out; deleted once the work has landed |
 | **Decision** — why code is shaped this way | `.agents/decisions/` (create folder if needed) | Living reference |
 | **Open work** | `.agents/backlog/README.md` | Removed when the fix is in the code |
