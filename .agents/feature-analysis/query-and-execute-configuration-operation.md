@@ -18,9 +18,7 @@ Affected repositories:
   implementations in `common-core/src/mcp-api`, kernel typings, tests and embedding documentation.
 - **RoomleCore:** exactly one new embind entry point — a synchronous, side-effect-free dock-pair query
   returning the existing `DockPairPreviewArray` DTO (no new callback, no new DTO, no signature
-  changes); Catch2 kernel tests. Loading, waiting and cleanup around the query are composed in
-  roomle-ui from existing kernel primitives — see the implementation plan at the end of this
-  document.
+  changes); Catch2 kernel tests.
 - **roomle-configurator-mcp:** the MCP tools built on the two calls, the page allow-list, the tool
   reference and the skill.
 
@@ -146,11 +144,8 @@ Implementation notes:
 - The pure dock-pair query needs exactly one new RoomleCore embind entry point — a synchronous
   `getDockPairsForDockingEntity(targetObjectId, dockingEntityId, allowInsertInBetween)` returning the
   existing `DockPairPreviewArray` DTO — that runs `DockPreview::evaluate` and the DTO conversion
-  without constructing the preview. Everything around it (the transient free-flying load, the
-  geometry wait, the cleanup) is composed in the SDK from existing kernel primitives and callbacks.
-  Composing possible children plus docking declarations in the SDK would miss collision and insert
-  evaluation and is not enough. The full design and the reasons are in the implementation plan at the
-  end of this document.
+  without constructing the preview. Composing possible children plus docking declarations in the SDK
+  would miss collision and insert evaluation and is not enough.
 - Payloads and results are detached JSON without kernel handles, like the capabilities contract
   (`packages/embedding-lib/docs/configurator-capabilities.md`).
 - The MCP server: every tool relays one of the two calls; the page allow-list carries the two method
