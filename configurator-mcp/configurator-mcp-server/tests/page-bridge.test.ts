@@ -39,6 +39,54 @@ describe('PageBridge.call', () => {
     socket.close();
   });
 
+  it('round-trips configuration query arguments and structured dock-pair results', async () => {
+    const bridge = new PageBridge();
+    const socket = attachPage(bridge, { clientId: 'reader' });
+    const result = {
+      type: 'dockingPositions',
+      context: { configurationHash: 'abc' },
+      allowInsertInBetween: false,
+      dockPairs: [
+        {
+          parentId: 1,
+          parentDockId: 'd1',
+          childDockId: 'd2',
+          position: { x: 0, y: 0, z: 0 },
+          lineSegments: [],
+          displacedComponents: [],
+        },
+      ],
+    };
+    socket.respond = vi.fn(() => result);
+    expect(
+      await bridge.call(
+        'queryConfigurationOperation',
+        ['dockingPositions', { child: { itemId: 'usm:shelf' } }],
+        undefined,
+        'reader'
+      )
+    ).toEqual(result);
+    expect(socket.respond).toHaveBeenCalledExactlyOnceWith(
+      'queryConfigurationOperation',
+      ['dockingPositions', { child: { itemId: 'usm:shelf' } }]
+    );
+    socket.respond = undefined;
+    const pending = bridge.call('queryConfigurationOperation', [
+      'configuration',
+    ]);
+    const call = JSON.parse(socket.sent.at(-1)!);
+    socket.receive({
+      kind: 'result',
+      id: call.id,
+      ok: false,
+      error: 'Configuration or selection changed while reading; read again',
+    });
+    await expect(pending).rejects.toThrow(
+      'Configuration or selection changed while reading; read again'
+    );
+    socket.close();
+  });
+
   it('rejects with the example URL when no page is connected', async () => {
     vi.stubEnv('CONFIGURATOR_MCP_PAGE_URL', undefined);
     vi.stubEnv('CONFIGURATOR_MCP_PORT', undefined);

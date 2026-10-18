@@ -7,6 +7,7 @@ export const CONFIGURATOR_METHODS = [
   'undo',
   'redo',
   'getConfiguratorCapabilities',
+  'queryConfigurationOperation',
 ] as const;
 export const CAPABILITY_SECTIONS = [
   'configuration',
@@ -19,12 +20,45 @@ export const CAPABILITY_SECTIONS = [
 export type ConfiguratorCapabilitySection =
   (typeof CAPABILITY_SECTIONS)[number];
 
+export const CONFIGURATION_OPERATION_QUERY_TYPES = [
+  'capabilities',
+  'configuration',
+  'componentParameters',
+  'globalParameters',
+  'possibleChildren',
+  'dockingPositions',
+  'componentDockingPositions',
+  'deleteImpact',
+] as const;
+export type ConfigurationOperationQueryType =
+  (typeof CONFIGURATION_OPERATION_QUERY_TYPES)[number];
+
+export interface ConfigurationOperationDockingChildComponentId {
+  componentId: string;
+}
+export interface ConfigurationOperationDockingChildItemId {
+  itemId: string;
+}
+export interface ConfigurationOperationDockingChildConfiguration {
+  configuration: string;
+}
+export type ConfigurationOperationDockingChild =
+  | ConfigurationOperationDockingChildComponentId
+  | ConfigurationOperationDockingChildItemId
+  | ConfigurationOperationDockingChildConfiguration;
+
+export type ConfigurationOperationQueryPayload = Record<string, unknown>;
+
 export interface ConfiguratorApi {
   extended: {
     undo(): Promise<void>;
     redo(): Promise<void>;
     getConfiguratorCapabilities(
       include?: ConfiguratorCapabilitySection[]
+    ): Promise<unknown>;
+    queryConfigurationOperation(
+      type: ConfigurationOperationQueryType,
+      payload?: ConfigurationOperationQueryPayload
     ): Promise<unknown>;
   };
 }
@@ -52,6 +86,11 @@ export const createConfiguratorApi = (
         call(
           'getConfiguratorCapabilities',
           include === undefined ? [] : [include]
+        ),
+      queryConfigurationOperation: (type, payload) =>
+        call(
+          'queryConfigurationOperation',
+          payload === undefined ? [type] : [type, payload]
         ),
     },
   };
