@@ -4,6 +4,8 @@ import {
   CONFIGURATOR_METHODS,
   createConfiguratorApi,
   type ConfiguratorCapabilitySection,
+  type ConfigurationOperationQueryPayload,
+  type ConfigurationOperationQueryType,
 } from '../configurator-api';
 import type { PageBridge } from '../page-bridge';
 
@@ -48,6 +50,34 @@ describe('createConfiguratorApi', () => {
       expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
         'getConfiguratorCapabilities',
         include === undefined ? [] : [include],
+        undefined,
+        'this-page'
+      );
+    }
+  );
+
+  it.each([
+    ['configuration', undefined],
+    ['componentParameters', { runtimeId: 7 }],
+    ['dockingPositions', { child: { itemId: 'usm:shelf' } }],
+  ] as [
+    ConfigurationOperationQueryType,
+    ConfigurationOperationQueryPayload | undefined,
+  ][])(
+    'forwards queryConfigurationOperation %s with payload %j and preserves JSON and browser identity',
+    async (type, payload) => {
+      const result = { type, context: {}, dockPairs: [] };
+      const bridge = createMockBridge();
+      vi.mocked(bridge.call).mockResolvedValue(result);
+      expect(
+        await createConfiguratorApi(
+          bridge,
+          'this-page'
+        ).extended.queryConfigurationOperation(type, payload)
+      ).toBe(result);
+      expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
+        'queryConfigurationOperation',
+        payload === undefined ? [type] : [type, payload],
         undefined,
         'this-page'
       );

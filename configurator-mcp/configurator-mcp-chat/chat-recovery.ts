@@ -4,7 +4,26 @@ const TOOL_LABELS: Record<string, string> = {
   undo: 'Undo',
   redo: 'Redo',
   'get-configurator-capabilities': 'Capabilities read',
+  'get-configuration': 'Configuration read',
+  'get-component-parameters': 'Component parameters read',
+  'get-global-parameters': 'Global parameters read',
+  'get-possible-children': 'Possible children read',
+  'get-docking-positions': 'Docking positions read',
+  'get-component-docking-positions': 'Component docking positions read',
+  'get-delete-impact': 'Delete impact read',
 };
+
+// The read-only tools: a failed or pending read never changed the configuration.
+const READ_TOOLS: ReadonlySet<string> = new Set([
+  'get-configurator-capabilities',
+  'get-configuration',
+  'get-component-parameters',
+  'get-global-parameters',
+  'get-possible-children',
+  'get-docking-positions',
+  'get-component-docking-positions',
+  'get-delete-impact',
+]);
 
 interface Outcome {
   toolName: string;
@@ -95,7 +114,7 @@ export const createChatRecovery = (tools: ToolSet) => {
     }
     for (const outcome of outcomes) {
       const label = TOOL_LABELS[outcome.toolName] ?? outcome.toolName;
-      if (outcome.toolName === 'get-configurator-capabilities') {
+      if (READ_TOOLS.has(outcome.toolName)) {
         const successful =
           outcome.status === 'returned' && !outcome.result?.isError;
         const data = successful ? resultData(outcome.result) : undefined;

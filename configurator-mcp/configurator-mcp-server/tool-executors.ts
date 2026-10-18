@@ -1,15 +1,72 @@
-import type {
-  ConfiguratorApi,
-  ConfiguratorCapabilitySection,
+import { z } from 'zod';
+import {
+  CAPABILITY_SECTIONS,
+  type ConfiguratorApi,
+  type ConfiguratorCapabilitySection,
+  type ConfigurationOperationQueryPayload,
+  type ConfigurationOperationQueryType,
 } from './configurator-api';
 import type { HistoryState } from './history-state';
 
 export type HistoryDirection = 'undo' | 'redo';
 
+// The payload shapes of the read-only queryConfigurationOperation, one per
+// query type. The server registers the same shapes as each tool's inputSchema;
+// the executor validates again before any page call.
+const dockingChildSchema = z.union([
+  z.strictObject({ componentId: z.string() }),
+  z.strictObject({ itemId: z.string() }),
+  z.strictObject({ configuration: z.string() }),
+]);
+
+export const configurationQueryInputSchemas: Record<
+  ConfigurationOperationQueryType,
+  z.ZodRawShape
+> = {
+  capabilities: {
+    include: z.array(z.enum(CAPABILITY_SECTIONS)).optional(),
+  },
+  configuration: {},
+  componentParameters: { runtimeId: z.number() },
+  globalParameters: {},
+  possibleChildren: { runtimeId: z.number().optional() },
+  dockingPositions: {
+    child: dockingChildSchema,
+    allowInsertInBetween: z.boolean().optional(),
+  },
+  componentDockingPositions: {
+    runtimeId: z.number(),
+    allowInsertInBetween: z.boolean().optional(),
+  },
+  deleteImpact: {
+    runtimeId: z.number(),
+    redockChildrenToParent: z.boolean(),
+  },
+};
+
+/** One read of the active configuration through queryConfigurationOperation; never enters the history queue. */
+export const runConfigurationOperationQuery = async (
+  api: ConfiguratorApi,
+  type: ConfigurationOperationQueryType,
+  payload?: ConfigurationOperationQueryPayload
+): Promise<unknown> => {
+  const parsed = z
+    .object(configurationQueryInputSchemas[type])
+    .parse(payload ?? {});
+  return api.extended.queryConfigurationOperation(type, parsed);
+};
+
+// The capabilities read routes through the generic query API and returns the
+// capabilities JSON unchanged, preserving the tool's result contract.
 export const readConfiguratorCapabilities = (
   api: ConfiguratorApi,
   include?: ConfiguratorCapabilitySection[]
-): Promise<unknown> => api.extended.getConfiguratorCapabilities(include);
+): Promise<unknown> =>
+  runConfigurationOperationQuery(
+    api,
+    'capabilities',
+    include === undefined ? undefined : { include }
+  ).then((result) => (result as { capabilities: unknown }).capabilities);
 
 // The page relays the history event of an undo or redo before the result of
 // the call; the wait only bounds a step the configurator did not take.

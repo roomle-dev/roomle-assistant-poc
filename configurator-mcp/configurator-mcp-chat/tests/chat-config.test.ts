@@ -74,9 +74,20 @@ describe('getChatConfig', () => {
 
   it('serves the system prompt for product inspection and history changes', () => {
     expect(SYSTEM_PROMPT).toContain('Roomle product configurator');
-    expect(SYSTEM_PROMPT).toContain(
-      'get-configurator-capabilities, undo and redo'
-    );
+    for (const tool of [
+      'get-configuration',
+      'get-component-parameters',
+      'get-global-parameters',
+      'get-possible-children',
+      'get-docking-positions',
+      'get-component-docking-positions',
+      'get-delete-impact',
+      'get-configurator-capabilities',
+      'undo',
+      'redo',
+    ]) {
+      expect(SYSTEM_PROMPT).toContain(tool);
+    }
     expect(SYSTEM_PROMPT).toContain(
       'declared alternatives from current kernel choices'
     );

@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ConfiguratorApi } from '../configurator-api';
+import type {
+  ConfiguratorApi,
+  ConfigurationOperationQueryPayload,
+  ConfigurationOperationQueryType,
+} from '../configurator-api';
 import { createConfiguratorApi } from '../configurator-api';
 import { connectHistoryState, HistoryState } from '../history-state';
 import { PageBridge } from '../page-bridge';
 import {
   HISTORY_EVENT_WAIT_MS,
+  runConfigurationOperationQuery,
   runHistoryStep,
   readConfiguratorCapabilities,
 } from '../tool-executors';
@@ -19,6 +24,13 @@ const createConfigurator = (history: HistoryState) => {
         complete: true,
         unresolved: [],
       })),
+      queryConfigurationOperation: vi.fn(
+        async (type: ConfigurationOperationQueryType) => ({
+          type,
+          context: {},
+          capabilities: { complete: true, unresolved: [] },
+        })
+      ),
       undo: vi.fn(async () => history.changed(false, true)),
       redo: vi.fn(async () => history.changed(true, false)),
     },
@@ -30,34 +42,142 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('runHistoryStep', () => {
-  it('reads complete or partial capabilities without waiting for a history event', async () => {
+describe('readConfiguratorCapabilities', () => {
+  it('reads complete or partial capabilities through the query API without waiting for a history event', async () => {
     const history = new HistoryState();
     const api = createConfigurator(history);
     const events = vi.spyOn(history, 'waitForEvents');
+    const query = vi.mocked(api.extended.queryConfigurationOperation);
     for (const complete of [true, false]) {
-      const result = {
+      const capabilities = {
         complete,
         unresolved: complete ? [] : [{ id: 'missing' }],
       };
-      vi.mocked(api.extended.getConfiguratorCapabilities).mockResolvedValueOnce(
-        result
-      );
+      query.mockResolvedValueOnce({
+        type: 'capabilities',
+        context: {},
+        capabilities,
+      });
       expect(await readConfiguratorCapabilities(api, ['materials'])).toBe(
-        result
+        capabilities
       );
     }
     expect(events).not.toHaveBeenCalled();
     expect(api.extended.undo).not.toHaveBeenCalled();
-    expect(api.extended.getConfiguratorCapabilities).toHaveBeenLastCalledWith([
-      'materials',
-    ]);
-    vi.mocked(api.extended.getConfiguratorCapabilities).mockRejectedValueOnce(
-      new Error('stale')
-    );
+    expect(query).toHaveBeenNthCalledWith(1, 'capabilities', {
+      include: ['materials'],
+    });
+    expect(query).toHaveBeenNthCalledWith(2, 'capabilities', {
+      include: ['materials'],
+    });
+    query.mockRejectedValueOnce(new Error('stale'));
     await expect(readConfiguratorCapabilities(api)).rejects.toThrow('stale');
+    expect(query).toHaveBeenLastCalledWith('capabilities', {});
   });
+});
 
+describe('runConfigurationOperationQuery', () => {
+  it.each([
+    ['configuration', {}, {}],
+    ['componentParameters', { runtimeId: 7 }, { runtimeId: 7 }],
+    ['globalParameters', {}, {}],
+    ['possibleChildren', {}, {}],
+    ['possibleChildren', { runtimeId: 3 }, { runtimeId: 3 }],
+    [
+      'dockingPositions',
+      { child: { componentId: 'usm:shelf' } },
+      { child: { componentId: 'usm:shelf' } },
+    ],
+    [
+      'dockingPositions',
+      { child: { itemId: 'usm:shelf' }, allowInsertInBetween: true },
+      { child: { itemId: 'usm:shelf' }, allowInsertInBetween: true },
+    ],
+    [
+      'dockingPositions',
+      { child: { configuration: '{"rootComponent":{}}' } },
+      { child: { configuration: '{"rootComponent":{}}' } },
+    ],
+    ['componentDockingPositions', { runtimeId: 5 }, { runtimeId: 5 }],
+    [
+      'componentDockingPositions',
+      { runtimeId: 5, allowInsertInBetween: true },
+      { runtimeId: 5, allowInsertInBetween: true },
+    ],
+    [
+      'deleteImpact',
+      { runtimeId: 5, redockChildrenToParent: true },
+      { runtimeId: 5, redockChildrenToParent: true },
+    ],
+    [
+      'deleteImpact',
+      { runtimeId: 5, redockChildrenToParent: false },
+      { runtimeId: 5, redockChildrenToParent: false },
+    ],
+  ] as [
+    ConfigurationOperationQueryType,
+    ConfigurationOperationQueryPayload,
+    ConfigurationOperationQueryPayload,
+  ][])(
+    'relays %s with payload %j and never touches the history',
+    async (type, payload, expected) => {
+      const history = new HistoryState();
+      const api = createConfigurator(history);
+      const events = vi.spyOn(history, 'waitForEvents');
+      const result = { type, context: {}, dockPairs: [] };
+      vi.mocked(api.extended.queryConfigurationOperation).mockResolvedValueOnce(
+        result
+      );
+
+      await expect(
+        runConfigurationOperationQuery(api, type, payload)
+      ).resolves.toBe(result);
+      expect(
+        api.extended.queryConfigurationOperation
+      ).toHaveBeenCalledExactlyOnceWith(type, expected);
+      expect(events).not.toHaveBeenCalled();
+      expect(api.extended.undo).not.toHaveBeenCalled();
+      expect(api.extended.redo).not.toHaveBeenCalled();
+      expect(api.extended.getConfiguratorCapabilities).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['capabilities', { include: ['nope'] }],
+    ['capabilities', { include: 'parameters' }],
+    ['componentParameters', {}],
+    ['componentParameters', { runtimeId: 'x' }],
+    ['possibleChildren', { runtimeId: 'x' }],
+    ['dockingPositions', {}],
+    ['dockingPositions', { child: {} }],
+    ['dockingPositions', { child: { componentId: 'a', itemId: 'b' } }],
+    ['dockingPositions', { child: { componentId: 4 } }],
+    [
+      'dockingPositions',
+      { child: { itemId: 'usm:shelf' }, allowInsertInBetween: 'yes' },
+    ],
+    ['componentDockingPositions', {}],
+    ['componentDockingPositions', { runtimeId: 5, allowInsertInBetween: 1 }],
+    ['deleteImpact', { runtimeId: 5 }],
+    ['deleteImpact', { runtimeId: 5, redockChildrenToParent: 1 }],
+  ] as [ConfigurationOperationQueryType, ConfigurationOperationQueryPayload][])(
+    'rejects the %s payload %j before any page call',
+    async (type, payload) => {
+      const history = new HistoryState();
+      const api = createConfigurator(history);
+
+      await expect(
+        runConfigurationOperationQuery(api, type, payload)
+      ).rejects.toThrow(/invalid/i);
+      expect(api.extended.queryConfigurationOperation).not.toHaveBeenCalled();
+      expect(api.extended.getConfiguratorCapabilities).not.toHaveBeenCalled();
+      expect(api.extended.undo).not.toHaveBeenCalled();
+      expect(api.extended.redo).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe('runHistoryStep', () => {
   it('runs undo on the page and reports the history state the page sent after it', async () => {
     const history = new HistoryState();
     history.changed(true, false);
@@ -158,6 +278,7 @@ describe('runHistoryStep', () => {
           complete: true,
           unresolved: [],
         })),
+        queryConfigurationOperation: vi.fn(),
         undo: vi.fn(async () => {
           throw new Error('The configurator page disconnected');
         }),
@@ -180,6 +301,7 @@ describe('runHistoryStep', () => {
           complete: true,
           unresolved: [],
         })),
+        queryConfigurationOperation: vi.fn(),
         undo: vi.fn(async () => undefined),
         redo: vi.fn(),
       },
@@ -207,6 +329,7 @@ describe('runHistoryStep', () => {
           complete: true,
           unresolved: [],
         })),
+        queryConfigurationOperation: vi.fn(),
         undo: vi.fn(
           () =>
             new Promise<void>((resolve) => {
