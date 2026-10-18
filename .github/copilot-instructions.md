@@ -149,6 +149,7 @@ The start script (`npm start`) provides:
 │   ├── scripts/                    # Utility scripts (JavaScript only)
 │   │   └── check-markdown-links.js # Checks the relative links of markdown files
 │   └── skills/                     # On-demand domain knowledge
+│       ├── analysis-cleanup.md     # Closing out landed analyses into .agents/context
 │       ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
 │       └── roomle-pr-resolution.md # Resolving a pull request's review
 ├── .temp/                          # Scratch space, git-ignored
@@ -167,6 +168,7 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 | Skill | Load when the task involves |
 |---|---|
+| [`.agents/skills/analysis-cleanup.md`](../.agents/skills/analysis-cleanup.md) | Cleaning up the analysis folders: closing out landed bug, feature and refactoring analyses into `.agents/context`, living reference and decisions | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
 | [`.agents/skills/configurator-mcp-server.md`](../.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
 | [`.agents/skills/roomle-pr-resolution.md`](../.agents/skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads. Never merge the PR |
 

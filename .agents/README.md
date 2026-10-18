@@ -41,6 +41,7 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 
 | Skill | Description | Load When |
 |---|---|---|
+| [analysis-cleanup.md](./skills/analysis-cleanup.md) | Closing out landed bug, feature and refactoring analyses: promoting the durable outcome into `.agents/context`, living reference and decisions, then deleting the analysis | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
 | [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
 | [roomle-pr-resolution.md](./skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads | Resolving a PR; never merge it |
 
