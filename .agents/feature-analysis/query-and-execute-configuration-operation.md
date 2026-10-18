@@ -224,3 +224,26 @@ roomle-configurator-mcp:
   `node .agents/scripts/check-markdown-links.js` on changed markdown; roomle-ui SDK/UI type checks
   and builds
 
+## Implementation requirements
+
+Stated by the ticket owner on 2026-10-18. The first implementation plan violated these constraints
+(it reactivated the deprecated load APIs and relied on AsyncHelper waits and timeouts) and was
+reverted. These requirements are binding for the implementation:
+
+- **No `loadFreeFlyingConfiguration` and no `loadPlainComponent`.** These kernel entry points are
+  deprecated and must not be reactivated by this feature. In particular, the SDK must not
+  orchestrate load → wait → query → delete around them to answer a docking-positions query.
+- **AsyncHelper only if it cannot be avoided, with an explanation.** The roomle-ui implementation of
+  the two generic APIs must not use `AsyncHelper` waiters. If a wait turns out to be absolutely
+  necessary, the implementation must explain why it is unavoidable.
+- **No timeouts.** No `setTimeout`-based waiting anywhere in the roomle-ui implementation.
+- **Calculate the possible docking positions without the old load APIs.** `DockPreviewConstructor`
+  (`src/configurator/internal/docking/dock-preview-constructor.h` in RoomleCore) handles the docking
+  preview process. The docking process does not need `loadFreeFlyingConfiguration` or
+  `loadPlainComponent`; therefore the calculation of the possible docking positions must also be
+  possible without that old API — either by reusing `DockPreviewConstructor` / `DockPreview` /
+  `PossibleDockPairs` for the pure calculation, or by writing a similar class for it.
+- **One clean RoomleCore API that generates the possible docking positions.** The kernel gets a new,
+  clean entry point that computes the possible docking positions (the dock pairs) — for a possible
+  child and for an existing component — without drawing previews and without changing configuration,
+  selection or history.
