@@ -175,7 +175,8 @@ export const createConfiguratorMcpServer = (
         annotations: READ_ANNOTATIONS,
       },
       async (args) => {
-        console.log(`[configurator-mcp] tool ${name}`, args ?? {});
+        // The payload can carry an assembly configuration; log the tool name only.
+        console.log(`[configurator-mcp] tool ${name}`);
         const result = await runConfigurationOperationQuery(
           configuratorApi,
           type,
