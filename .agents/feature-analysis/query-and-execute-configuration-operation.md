@@ -16,8 +16,11 @@ Affected repositories:
 
 - **roomle-ui:** the two generic methods on `RoomleConfigurator`, their dynamically imported
   implementations in `common-core/src/mcp-api`, kernel typings, tests and embedding documentation.
-- **RoomleCore:** a new embind entry point for the pure dock-pair query, possibly a dock target for
-  `loadComponentAndDockNewPlanComponents`; kernel tests.
+- **RoomleCore:** exactly one new embind entry point — a synchronous, side-effect-free dock-pair query
+  returning the existing `DockPairPreviewArray` DTO (no new callback, no new DTO, no signature
+  changes); Catch2 kernel tests. Loading, waiting and cleanup around the query are composed in
+  roomle-ui from existing kernel primitives — see the implementation plan at the end of this
+  document.
 - **roomle-configurator-mcp:** the MCP tools built on the two calls, the page allow-list, the tool
   reference and the skill.
 
@@ -133,12 +136,21 @@ Implementation notes:
   `:1599`), possible children (`:2503`, `:2525`), parameter changes (`:1578`, `:1443`, `:2287`,
   `:2931`), `loadConfiguration` (`:1214`), `undo`/`redo` (`:2318`, `:2327`).
 - Type and wrap the exposed kernel primitives in `typings/kernel.ts` and the mcp-api implementation:
-  `determinePlanComponentsThatWillBeDeleted`, `dockComponentWithPosition`, `loadPlainComponent`, and
-  `deleteComponent` with its re-dock flag.
-- The pure dock-pair query needs a new RoomleCore embind entry point that runs the dock-pair
-  computation (`DockPreviewRequest` / `PossibleDockPairs`) for a possible child or an existing
-  component without constructing the preview. Composing possible children plus docking declarations in
-  the SDK would miss collision and insert evaluation and is not enough.
+  `determinePlanComponentsThatWillBeDeleted`, `dockComponentWithPosition`, `loadPlainComponent`,
+  `loadFreeFlyingConfiguration`, and `deleteComponent` with its re-dock flag. The create-and-dock
+  operation composes `loadPlainComponent` / `loadFreeFlyingConfiguration` + `dockComponentWithPosition`
+  in the SDK (the new runtime id is captured from the existing `Editor3dComponentCreated` callback,
+  so no kernel signature changes); the move operation is `dockComponentWithPosition` on the existing
+  component — the kernel's `DockOperator::dock` undocks a docked child when re-docking
+  (`src/configurator/internal/docking/dock-operator.cpp:146`).
+- The pure dock-pair query needs exactly one new RoomleCore embind entry point — a synchronous
+  `getDockPairsForDockingEntity(targetObjectId, dockingEntityId, allowInsertInBetween)` returning the
+  existing `DockPairPreviewArray` DTO — that runs `DockPreview::evaluate` and the DTO conversion
+  without constructing the preview. Everything around it (the transient free-flying load, the
+  geometry wait, the cleanup) is composed in the SDK from existing kernel primitives and callbacks.
+  Composing possible children plus docking declarations in the SDK would miss collision and insert
+  evaluation and is not enough. The full design and the reasons are in the implementation plan at the
+  end of this document.
 - Payloads and results are detached JSON without kernel handles, like the capabilities contract
   (`packages/embedding-lib/docs/configurator-capabilities.md`).
 - The MCP server: every tool relays one of the two calls; the page allow-list carries the two method
@@ -182,14 +194,16 @@ roomle-ui:
 - tests under `packages/web-sdk/packages/*/__tests__/`
 - `packages/embedding-lib/docs/` — contract document for the two APIs
 
-RoomleCore:
+RoomleCore (kept at a minimum — one new embind function, nothing else):
 
-- new embind entry point for the pure dock-pair query: `configurator.json`,
-  `ConfiguratorKernelEmc` (`configuratorEmscriptenInterface.h`), kernel implementation reusing
-  `DockPreviewRequest` / `PossibleDockPairs` without preview construction
-- possibly `loadComponentAndDockNewPlanComponents` with a dock target, if composing
-  `loadPlainComponent` + `dockComponent` proves insufficient
+- `getDockPairsForDockingEntity(targetObjectId, dockingEntityId, allowInsertInBetween)` returning the
+  existing `DockPairPreviewArray` DTO: `configurator.json`, `ConfiguratorKernelEmc`
+  (`configuratorEmscriptenInterface.h`), kernel implementation reusing `DockPreview::evaluate` and
+  `assembler::newDockPairToPointDto` / `newDockPairToLineDto` without preview construction, with the
+  insert case's undock/restore mirroring `requestPreviewGeometry` + `cancelDocking`
 - Catch2 kernel tests for the query
+- no new callback, no new DTO, no runtime-id returns, no dock target for
+  `loadComponentAndDockNewPlanComponents` — the SDK composes all of that from existing primitives
 
 roomle-configurator-mcp:
 
@@ -209,3 +223,4 @@ roomle-configurator-mcp:
 - gates: `npm run typecheck`, `npm run lint`, `npm run format:check`,
   `node .agents/scripts/check-markdown-links.js` on changed markdown; roomle-ui SDK/UI type checks
   and builds
+
