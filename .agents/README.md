@@ -208,7 +208,7 @@ named only where a reader would expect a change. Beyond that, the document shoul
 | **Bug analysis** | `.agents/bug-analysis/` | Historical record; deleted once the fix has landed |
 | **Feature analysis** | `.agents/feature-analysis/` | Historical record; deleted once the work has landed |
 | **Refactoring analysis** | `.agents/refactoring-analysis/` | Historical record; deleted once the work has landed |
-| **Benchmark** — performance measurement | `.agents/benchmarks/` | Historical record; never updated after the measurement |
+| **Benchmark** — performance measurement | `.agents/benchmarks/` | Historical record; never updated and never deleted — permanent baseline for future comparisons |
 | **Decision** — why code is shaped this way | `.agents/decisions/` | Living reference |
 | **Image** — referenced by a document | `.agents/images/` | Kept as long as the referencing document exists |
 | **Open work** | `.agents/backlog/README.md` | Removed when the fix is in the code |

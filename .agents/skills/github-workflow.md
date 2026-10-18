@@ -10,7 +10,7 @@
 
 - Run `git status` and `git diff` to see every change.
 - Confirm every change is intentional and related to the current task.
-- Discard or stash anything unrelated.
+- Leave unrelated changes unstaged — never discard or stash the user's uncommitted work without explicit permission.
 
 ### Step 2 — Stage only related changes
 
@@ -77,6 +77,7 @@ Before committing, verify:
 - **Never rewrite history.** No `git commit --amend`, no `git push --force`, no `git push --force-with-lease`, no `git rebase` on commits that are part of the main workflow. Any change MUST be a new commit.
 - **Conventional commits only.** Format: `type: lowercase description` — no trailing period, no ticket numbers.
 - **Only commit related changes.** Every file in a commit MUST be directly related to the commit's purpose.
+- **Never discard or stash uncommitted work without explicit permission.** Unrelated changes stay in the working tree, unstaged.
 - **Never commit build artifacts, dependencies, temporary files, IDE configs, debug code, or commented-out code.**
 - **Never create a PR automatically.** Only when the user explicitly asks.
 - **Never merge a PR.** Not with `gh pr merge`, not by enabling auto-merge.

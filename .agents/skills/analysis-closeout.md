@@ -17,7 +17,7 @@ The full sweep over all three analysis folders is the **analysis-cleanup** skill
 
 Never guess. Check:
 
-- The commit is reachable from the default branch (or will be, once the branch is merged).
+- The commit is reachable from the default branch in **every** affected repository. An anticipated merge does not establish landing — the commit must already be on the default branch. For analyses spanning repositories, verify each one; a commit on one repository's default branch does not mean the work landed in the others.
 - The behaviour described in the analysis is in the code.
 - The guarding test exists and passes.
 
@@ -41,9 +41,11 @@ Drop the rest: symptom, reproduction, investigation trace, verification logs, al
 - Feature analysis: set status to `Implemented` (or `Rejected` if the approach was rejected).
 - Refactoring analysis: set status to `Done`. Append the report (summary of changes, changed files, before/after comparison, test adaptations, risks and open items, performance measurements if applicable).
 
-### Step 5 — Delete the analysis document
+### Step 5 — Delete the analysis document (only when the work has landed)
 
-Once the work is on the default branch:
+Deletion is conditional on Step 2's verification. The work must be on the default branch in every affected repository — an anticipated merge is not enough. If the work has not landed yet, retain the analysis: promote the durable outcome and update the status (Step 3–4), but do not delete the document or clean up the indexes.
+
+When the work has landed on every affected repository's default branch:
 
 - Delete the analysis document file.
 - Remove its row from the folder's `README.md`.
@@ -68,12 +70,13 @@ Git history, the Jira comment, and the pull request description remain the archi
 ## Completion Checklist
 
 - [ ] Analysis document identified and read
-- [ ] Work verified as landed (commit reachable, behaviour in code, guarding test exists)
+- [ ] Work verified as landed on the default branch in every affected repository (commit reachable, behaviour in code, guarding test exists)
 - [ ] Durable outcome identified and promoted to its permanent home
 - [ ] Analysis status updated (Fixed / Implemented / Rejected / Done)
 - [ ] Refactoring report appended (if applicable)
-- [ ] Analysis document deleted
-- [ ] Folder README updated
-- [ ] `.agents/README.md` updated
-- [ ] All broken links fixed
+- [ ] If the work has landed: analysis document deleted
+- [ ] If the work has landed: folder README updated
+- [ ] If the work has landed: `.agents/README.md` updated
+- [ ] If the work has landed: all broken links fixed
+- [ ] If the work has not landed: analysis retained with updated status, no deletion
 - [ ] Committed in the same branch as the work

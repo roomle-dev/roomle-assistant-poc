@@ -401,7 +401,7 @@ Analysis is analysis-only: do not modify productive code unless the user also as
 Everything in `.agents/` is one of two kinds:
 
 - **Living reference** describes how the code works *now*. Present tense. No "was fixed", "previously", "no longer", "the old code". No ticket numbers. Updated in the same commit that changes the behaviour it describes. This includes: `.agents/context/`, `.agents/wiki/`, `.agents/skills/`, `.agents/decisions/` (ADRs), all README indexes, and `docs/`.
-- **Historical record** is a point-in-time write-up. Written at one moment and never updated after close-out. Deleted when the work it describes has landed and its durable outcome has been promoted. This includes: `.agents/bug-analysis/`, `.agents/feature-analysis/`, `.agents/refactoring-analysis/`, `.agents/backlog/`, and `.agents/benchmarks/`.
+- **Historical record** is a point-in-time write-up. Written at one moment and never updated after close-out. Analysis documents (`.agents/bug-analysis/`, `.agents/feature-analysis/`, `.agents/refactoring-analysis/`) and backlog items (`.agents/backlog/`) are deleted when the work they describe has landed and the durable outcome has been promoted. Benchmarks (`.agents/benchmarks/`) are historical records but are **never deleted** — they are the permanent baseline for future performance comparisons.
 
 ### Architecture Decision Records (ADRs)
 
