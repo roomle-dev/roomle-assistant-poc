@@ -140,6 +140,8 @@ The start script (`npm start`) provides:
 │   │   └── README.md
 │   ├── bug-analysis/               # Bug root-cause analyses
 │   │   └── README.md
+│   ├── context/                    # Living reference: how the implemented features work today
+│   │   └── README.md               # Feature index
 │   ├── feature-analysis/           # Feature investigations
 │   │   └── README.md
 │   ├── refactoring-analysis/       # Refactoring analyses with reports
@@ -147,6 +149,7 @@ The start script (`npm start`) provides:
 │   ├── scripts/                    # Utility scripts (JavaScript only)
 │   │   └── check-markdown-links.js # Checks the relative links of markdown files
 │   └── skills/                     # On-demand domain knowledge
+│       ├── analysis-cleanup.md     # Closing out landed analyses into .agents/context
 │       ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
 │       └── roomle-pr-resolution.md # Resolving a pull request's review
 ├── .temp/                          # Scratch space, git-ignored
@@ -165,6 +168,7 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 | Skill | Load when the task involves |
 |---|---|
+| [`.agents/skills/analysis-cleanup.md`](../.agents/skills/analysis-cleanup.md) | Cleaning up the analysis folders: closing out landed bug, feature and refactoring analyses into `.agents/context`, living reference and decisions | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
 | [`.agents/skills/configurator-mcp-server.md`](../.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
 | [`.agents/skills/roomle-pr-resolution.md`](../.agents/skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads. Never merge the PR |
 
@@ -298,6 +302,7 @@ The `.agents/` folder serves as the "digital brain" for roomle-configurator-mcp,
 ├── README.md                     # Digital brain index
 ├── backlog/                      # Open work only
 ├── bug-analysis/                 # Bug root-cause analyses (written before fix)
+├── context/                      # Living reference of the implemented features
 ├── feature-analysis/             # Feature investigations and decisions
 ├── refactoring-analysis/         # Refactoring analyses with reports
 ├── scripts/                      # Utility scripts (JavaScript only)
@@ -331,7 +336,7 @@ A repository the work leaves unchanged is named only where a reader would expect
 | New feature capability | new file in `docs/`, or an update of the document that covers the area, with a line in `docs/README.md` |
 | Architecture decisions | Create a numbered ADR in `.agents/decisions/` (create the folder with the first one) |
 | Open work | `.agents/backlog/README.md` |
-| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge |
+| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge, `.agents/context/` for the living reference of an implemented feature |
 
 **Important**: Analysis documents in `.agents/bug-analysis/`, `.agents/feature-analysis/`, and `.agents/refactoring-analysis/` are **historical records** — they document the analysis process and decisions, but the durable knowledge should be promoted to living-reference documentation in `docs/` or the skill files.
 

@@ -41,6 +41,7 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 
 | Skill | Description | Load When |
 |---|---|---|
+| [analysis-cleanup.md](./skills/analysis-cleanup.md) | Closing out landed bug, feature and refactoring analyses: promoting the durable outcome into `.agents/context`, living reference and decisions, then deleting the analysis | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
 | [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
 | [roomle-pr-resolution.md](./skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads | Resolving a PR; never merge it |
 
@@ -49,6 +50,16 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 | Script | Description |
 |---|---|
 | [check-markdown-links.js](./scripts/check-markdown-links.js) | Checks the relative links of markdown files: `node .agents/scripts/check-markdown-links.js <file.md> …` |
+
+### Context
+
+Living reference of the implemented features, promoted from the feature analyses at close-out: how
+each feature works today. The index is [the feature index](context/README.md).
+
+| Feature | Covers |
+|---|---|
+| [The configurator example with the AI Planning Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server with `undo` and `redo`, the launcher |
+| [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
 
 ### Wiki
 
@@ -87,8 +98,6 @@ feature behaves the way it does. Written **before** the work, closed out **after
 | Document | Status | Last touched |
 |---|---|---|
 | [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Open — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-18 |
-| [Configurator capabilities for the configurator MCP](feature-analysis/get-configurator-capabilities.md) | Implemented — SDK capability discovery and MCP read tool; branches not merged | 2026-10-17 |
-| [The configurator example with the AI Planning Assistant chat and a first configurator MCP server](feature-analysis/configurator-example-with-planning-assistant-chat.md) | Implemented — the chat API on the shared callback base and the window in the configurator (roomle-ui), the page as host with a Mistral chat backend, the MCP server with undo and redo; branches not merged | 2026-10-16 |
 
 ### Refactoring Analyses
 
@@ -142,7 +151,10 @@ Use kebab-case for document filenames:
 
 ### Document Structure
 
-Every analysis document should include:
+Every analysis document names the **affected repositories first**, right after its header block: a
+short list of the repositories the work changes, one line each saying what changes there (for
+example roomle-ui, roomle-configurator-mcp, RoomleCore). A repository the work leaves unchanged is
+named only where a reader would expect a change. Beyond that, the document should include:
 
 **Bug Analysis:**
 - Symptom and reproduction
@@ -173,7 +185,7 @@ Every analysis document should include:
 
 | What you produced | Where it goes | Lifecycle |
 |---|---|---|
-| **Living reference** — how things work now | `.agents/skills/` or `docs/` | Updated when behaviour changes; says what holds today — never what was wrong, when something was solved, or a ticket number |
+| **Living reference** — how things work now | `.agents/skills/`, `.agents/context/` or `docs/` | Updated when behaviour changes; says what holds today — never what was wrong, when something was solved, or a ticket number |
 | **Wiki page** — a durable answer to a recurring question | `.agents/wiki/` | Living reference; not an analysis, no lifecycle |
 | **Historical record** — analysis, benchmark, refactoring | `.agents/<analysis-type>/` | Never updated after close-out; deleted once the work has landed |
 | **Decision** — why code is shaped this way | `.agents/decisions/` (create folder if needed) | Living reference |
