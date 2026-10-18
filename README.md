@@ -47,5 +47,5 @@ Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`.
 | [`configurator-mcp/`](./configurator-mcp/README.md) | The TypeScript workspace of the MCP server and the chat backend |
 | [`docs/`](./docs/README.md) | Living reference for users and developers |
 | [`.agents/`](./.agents/README.md) | The digital brain for AI agents: skills, feature context, analyses, decisions, backlog |
-| [`AGENTS.md`](./AGENTS.md) | Instructions for AI assistants (`CLAUDE.md` redirects there, `.github/copilot-instructions.md` mirrors it) |
+| [`AGENTS.md`](./AGENTS.md) | Instructions for AI assistants (`CLAUDE.md` redirects there) |
 | `.temp/` | Scratch space, git-ignored |

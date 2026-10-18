@@ -8,7 +8,6 @@
 2. **Read [`docs/README.md`](./docs/README.md)** before answering architecture or domain questions. It is the index of the living reference: how the example page, the MCP server and its tools work today.
 3. **Read [`.agents/README.md`](./.agents/README.md)** for the complete digital brain index, separating living reference from historical records.
 4. **Treat documentation as part of the task, not a follow-up.** Every analysis produces a document, and every change to productive code updates one — see [Where Documentation Goes](#where-documentation-goes).
-5. **For GitHub Copilot users:** See [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) for Copilot-specific guidance.
 
 ## 1. Think Before Coding
 
@@ -138,25 +137,38 @@ The start script (`npm start`) provides:
 │   ├── README.md                   # Digital brain index
 │   ├── backlog/                    # Open work only
 │   │   └── README.md
+│   ├── benchmarks/                 # Performance measurements
+│   │   └── README.md
 │   ├── bug-analysis/               # Bug root-cause analyses
 │   │   └── README.md
 │   ├── context/                    # Living reference: how the implemented features work today
 │   │   └── README.md               # Feature index
+│   ├── decisions/                  # Architecture Decision Records (ADRs)
+│   │   ├── README.md
+│   │   └── 0001-sdk-owned-configurator-capabilities.md
 │   ├── feature-analysis/           # Feature investigations
+│   │   └── README.md
+│   ├── images/                     # Images referenced by documents
 │   │   └── README.md
 │   ├── refactoring-analysis/       # Refactoring analyses with reports
 │   │   └── README.md
 │   ├── scripts/                    # Utility scripts (JavaScript only)
+│   │   ├── README.md
 │   │   └── check-markdown-links.js # Checks the relative links of markdown files
 │   ├── skills/                     # On-demand domain knowledge
+│   │   ├── README.md
+│   │   ├── analysis.md             # Analyse the bug, feature, or refactoring
 │   │   ├── analysis-cleanup.md     # Closing out landed analyses into .agents/context
+│   │   ├── analysis-closeout.md    # Close out a single analysis at commit time
+│   │   ├── cleanup-backlog.md      # Sweep the backlog, verify every item
 │   │   ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
+│   │   ├── github-workflow.md      # Git staging, commits, pre-commit checklist
+│   │   ├── plan-implementation.md  # Plan an implementation with unit tests
 │   │   └── roomle-pr-resolution.md # Resolving a pull request's review
 │   └── wiki/                       # Wiki pages: durable living-reference answers
+│       ├── README.md
 │       └── roomle-configurator-api-for-mcp.md # The roomle-ui API the MCP server needs
 ├── .temp/                          # Scratch space, git-ignored
-├── .github/
-│   └── copilot-instructions.md     # GitHub Copilot specific instructions
 ├── .oxlintrc.json                  # Oxlint settings
 ├── .prettierrc.json                # Prettier settings
 └── .prettierignore                 # Paths Prettier does not format
@@ -170,9 +182,14 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 | Skill | Load when the task involves |
 |---|---|
+| [`.agents/skills/analysis.md`](./.agents/skills/analysis.md) | "analyse the bug", "analyze the bug", "bug analysis", "analyse the feature", "analyze the feature", "feature analysis", "analyse the refactoring", "analyze the refactoring", "refactoring analysis" |
+| [`.agents/skills/plan-implementation.md`](./.agents/skills/plan-implementation.md) | Planning a task or implementation — the plan must include unit tests |
+| [`.agents/skills/cleanup-backlog.md`](./.agents/skills/cleanup-backlog.md) | "cleanup backlog", "clean up the backlog", "backlog cleanup" |
 | [`.agents/skills/analysis-cleanup.md`](./.agents/skills/analysis-cleanup.md) | Cleaning up the analysis folders: closing out landed bug, feature and refactoring analyses into `.agents/context`, living reference and decisions | "cleanup analyses", "clean up the analyses", "analysis cleanup", reviewing or tidying the analysis folders |
-| [`.agents/skills/configurator-mcp-server.md`](./.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
 | [`.agents/skills/roomle-pr-resolution.md`](./.agents/skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads. Never merge the PR |
+| [`.agents/skills/analysis-closeout.md`](./.agents/skills/analysis-closeout.md) | Closing out a single analysis document once its work has landed |
+| [`.agents/skills/github-workflow.md`](./.agents/skills/github-workflow.md) | Before every commit, push, or pull request |
+| [`.agents/skills/configurator-mcp-server.md`](./.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
 
 ## Key Architecture Patterns
 
@@ -303,9 +320,12 @@ The `.agents/` folder serves as the "digital brain" for roomle-configurator-mcp,
 .agents/
 ├── README.md                     # Digital brain index
 ├── backlog/                      # Open work only
+├── benchmarks/                   # Performance measurements
 ├── bug-analysis/                 # Bug root-cause analyses (written before fix)
 ├── context/                      # Living reference of the implemented features
+├── decisions/                    # Architecture Decision Records (ADRs)
 ├── feature-analysis/             # Feature investigations and decisions
+├── images/                       # Images referenced by documents
 ├── refactoring-analysis/         # Refactoring analyses with reports
 ├── scripts/                      # Utility scripts (JavaScript only)
 ├── skills/                       # On-demand domain knowledge (skills)
@@ -335,12 +355,17 @@ A repository the work leaves unchanged is named only where a reader would expect
 |---|---|
 | Bug analysis | new file in `.agents/bug-analysis/` with kebab-case slug |
 | Feature analysis | new file in `.agents/feature-analysis/` with kebab-case slug |
-| Refactoring analysis | new file in `.agents/refactoring-analysis/` with kebab-case slug |
+| Refactoring analysis | new file in `.agents/refactoring-analysis/` with kebab-case slug — the report goes into the PR description |
+| Any other analysis — architecture, data flow, algorithm, test tooling | new file in the folder matching the domain |
 | New feature capability | new file in `docs/`, or an update of the document that covers the area, with a line in `docs/README.md` |
-| Architecture decisions | Create a numbered ADR in `.agents/decisions/` (create the folder with the first one) |
+| Bug fix | update the existing document that covers the affected area, and close out the bug analysis |
+| Change to productive code that needs no new document | update the living-reference document covering the touched area, in the same branch |
+| Architecture decisions — chosen **or** rejected | numbered ADR in `.agents/decisions/` |
+| Benchmark / performance analysis | `.agents/benchmarks/` |
+| Wiki page — a durable answer to a recurring question | `.agents/wiki/` with kebab-case slug |
 | Open work | `.agents/backlog/README.md` |
 | Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge, `.agents/context/` for the living reference of an implemented feature |
-| Wiki page | new file in `.agents/wiki/` with kebab-case slug |
+| Image referenced by a document | `.agents/images/` with a descriptive kebab-case name |
 
 **Important**: Analysis documents in `.agents/bug-analysis/`, `.agents/feature-analysis/`, and `.agents/refactoring-analysis/` are **historical records** — they document the analysis process and decisions, but the durable knowledge should be promoted to living-reference documentation in `docs/` or the skill files.
 
@@ -358,6 +383,75 @@ A repository the work leaves unchanged is named only where a reader would expect
 
 **A solved bug keeps no analysis.** Once its fix has landed on `master`, the valuable content is
 promoted and the document deleted, and the bug's item leaves the backlog.
+
+### Analysis Triggers
+
+These phrases are shorthand for a full, mandatory workflow. When the user's message contains one, load the skill and execute it in full, without asking for the details it defines.
+
+- **"analyse the bug"** / **"analyze the bug"** / **"bug analysis"** → [`.agents/skills/analysis.md`](./.agents/skills/analysis.md): deep root-cause analysis, written before the fix, in `.agents/bug-analysis/`.
+- **"analyse the feature"** / **"analyze the feature"** / **"feature analysis"** → [`.agents/skills/analysis.md`](./.agents/skills/analysis.md): feature investigation, written before the work, in `.agents/feature-analysis/`.
+- **"analyse the refactoring"** / **"analyze the refactoring"** / **"refactoring analysis"** → [`.agents/skills/analysis.md`](./.agents/skills/analysis.md): refactoring analysis, written before the work, in `.agents/refactoring-analysis/`.
+- **"cleanup backlog"** / **"clean up the backlog"** / **"backlog cleanup"** → [`.agents/skills/cleanup-backlog.md`](./.agents/skills/cleanup-backlog.md).
+- **"cleanup analyses"** / **"clean up the analyses"** / **"analysis cleanup"** → [`.agents/skills/analysis-cleanup.md`](./.agents/skills/analysis-cleanup.md).
+
+Analysis is analysis-only: do not modify productive code unless the user also asks for the change.
+
+### Living Reference vs Historical Records
+
+Everything in `.agents/` is one of two kinds:
+
+- **Living reference** describes how the code works *now*. Present tense. No "was fixed", "previously", "no longer", "the old code". No ticket numbers. Updated in the same commit that changes the behaviour it describes. This includes: `.agents/context/`, `.agents/wiki/`, `.agents/skills/`, `.agents/decisions/` (ADRs), all README indexes, and `docs/`.
+- **Historical record** is a point-in-time write-up. Written at one moment and never updated after close-out. Analysis documents (`.agents/bug-analysis/`, `.agents/feature-analysis/`, `.agents/refactoring-analysis/`) and backlog items (`.agents/backlog/`) are deleted when the work they describe has landed and the durable outcome has been promoted. Benchmarks (`.agents/benchmarks/`) are historical records but are **never deleted** — they are the permanent baseline for future performance comparisons.
+
+### Architecture Decision Records (ADRs)
+
+Decisions about *why* the code is shaped the way it is live in `.agents/decisions/`. They are numbered sequentially, starting at `0001`. Each ADR carries:
+
+- A title in the form `NNNN — short description`
+- Status: `Accepted`, `Superseded by NNNN`, `Rejected`
+- Date
+- Context — the situation and the forces at play
+- Decision — what was decided
+- Alternatives — the approaches considered and why they were rejected
+- Consequences — the positive and negative outcomes of the decision
+
+ADRs are living reference. They are read before proposing a change to an area they cover. A superseded ADR is kept with its superseding reference — never deleted.
+
+### Refactoring Rules
+
+1. Execute aggressively — do not revert when tests fail; adapt tests instead.
+2. Changed outputs are typically the desired result.
+3. Apply completely — no mix of old and new patterns in the same code path.
+4. Every refactoring produces a report — in the pull request description.
+
+### Testing
+
+- Every new feature implementation, bug fix, or change in productive code requires unit tests.
+- Every implementation plan has to include the unit tests.
+- Tests use descriptive names and cover both the happy path and edge cases.
+- A bug fix is not complete until a test reproduces the bug and the fix makes it pass.
+- Run the full test suite after changes to ensure no regressions.
+- Use vitest for unit tests: `npm test` runs the MCP server and chat backend tests.
+
+### Infrastructure
+
+- `.agents/skills/` is the only place for skills. Never create a `.claude/` folder, no `SKILL.md` wrappers outside `.agents/skills/`, no tool-specific copies of a skill.
+- Every skill is a single markdown file in `.agents/skills/` with a row in the skills table of this file.
+- Scripts in `.agents/scripts/` must be written in JavaScript (Node.js) — the repository's primary scripting language.
+- The `.agents/` folder is managed by the agent. The agent adds potentially useful information proactively, without asking for permission.
+- Temporary and scratch files go in a git-ignored `.temp/` folder, never in `.agents/`.
+
+### Jira / Ticketing
+
+When the repository uses Atlassian Jira:
+
+- **The `jira` CLI is the primary and always-available way to read and write Jira.** Never conclude that Jira is unavailable because an MCP connector needs authorization — the CLI is the source of truth. Always prefix commands with `PAGER=cat`.
+- **Never declare Jira unavailable** without first trying the CLI: `PAGER=cat jira issue view <KEY> --plain` and `PAGER=cat jira issue comment add <KEY> --template <file> --no-input`.
+- **Never delete a Jira ticket.** No exception.
+- **Create a ticket only when the user explicitly asks for it to be created in Jira.** "Write a ticket" or "draft a ticket" asks for the ticket text in the chat.
+- **Ticket preflight:** Analyse the ticket before changing code. Tickets often contain only IDs or URLs instead of the actual data. Download the data automatically before investigating. If the ticket is missing required information, add a Jira comment explaining what is missing instead of starting implementation.
+- **What must be written back to the ticket:** Analyses (bug, feature, refactoring) and implementation plans. Everything else lives in the repository.
+- **Never comment these:** What was implemented (that belongs in the PR description). That a pull request was created. Progress, status, or completion notes.
 
 ## Development Workflow
 
@@ -507,13 +601,17 @@ Examples:
 
 ### Core Principles
 
-- **Root cause analysis is mandatory** — Understand why the bug occurs before fixing
-- **Reproduce first** — Verify the bug exists and understand its impact
-- **Fix at the source** — Address the root cause, not symptoms
+- **Never revert the user's intended changes.** The goal is to make the new code work, not to undo it.
+- **Bug fixes require a purpose branch.** Create a feature/bug-fix branch unless the current branch was already created for this specific bug fix.
+- **Bug fixes are minimal and surgical.** Find the root cause and fix it there. No hacks, no workarounds, no unrelated cleanups.
+- **Refactoring found during a bug fix goes to the backlog, never into the fix.** Create a backlog item in `.agents/backlog/`. Never start the refactoring automatically.
+- **Root cause analysis is mandatory.** Before proposing the final code change, fully understand *why* the current code produces wrong results.
+- **The path to a fix can be dirty.** Trial-and-error, temporary hacks, excessive logging on feature branches are acceptable to locate the root cause. The final result must be clean and tested.
+- **No point fixes or workarounds in the final result.** A final fix that hides a deeper problem is not acceptable.
+- **Workarounds come back as boomerangs.** If a function produces incorrect results for certain inputs, fix that function — don't avoid calling it.
 - **Wrong content from an agent is an instruction problem** — Find the misleading or too complex
   instruction and clarify it, or simplify the tool API; correct the input automatically before
   rejecting it. A guard is a last resort — see [Guards Are a Last Resort](#guards-are-a-last-resort)
-- **Test the fix** — Verify it resolves the issue without introducing regressions
 
 ### Process
 
