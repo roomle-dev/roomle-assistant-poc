@@ -50,6 +50,15 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 |---|---|
 | [check-markdown-links.js](./scripts/check-markdown-links.js) | Checks the relative links of markdown files: `node .agents/scripts/check-markdown-links.js <file.md> …` |
 
+### Wiki
+
+Living-reference pages that answer a recurring question once — an API map, a contract between
+repositories, a data-flow summary. Not an analysis: no lifecycle, updated when the behaviour changes.
+
+| Page | Covers |
+|---|---|
+| [The roomle-ui configurator API for the MCP server](./wiki/roomle-configurator-api-for-mcp.md) | The queries and operations the MCP server needs, which parts of roomle-ui's `RoomleConfigurator` public API already cover them, and which parts are missing |
+
 ### User-Facing Documentation
 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
@@ -77,6 +86,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Open — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-18 |
 | [Configurator capabilities for the configurator MCP](feature-analysis/get-configurator-capabilities.md) | Implemented — SDK capability discovery and MCP read tool; branches not merged | 2026-10-17 |
 | [The configurator example with the AI Planning Assistant chat and a first configurator MCP server](feature-analysis/configurator-example-with-planning-assistant-chat.md) | Implemented — the chat API on the shared callback base and the window in the configurator (roomle-ui), the page as host with a Mistral chat backend, the MCP server with undo and redo; branches not merged | 2026-10-16 |
 
@@ -164,6 +174,7 @@ Every analysis document should include:
 | What you produced | Where it goes | Lifecycle |
 |---|---|---|
 | **Living reference** — how things work now | `.agents/skills/` or `docs/` | Updated when behaviour changes; says what holds today — never what was wrong, when something was solved, or a ticket number |
+| **Wiki page** — a durable answer to a recurring question | `.agents/wiki/` | Living reference; not an analysis, no lifecycle |
 | **Historical record** — analysis, benchmark, refactoring | `.agents/<analysis-type>/` | Never updated after close-out; deleted once the work has landed |
 | **Decision** — why code is shaped this way | `.agents/decisions/` (create folder if needed) | Living reference |
 | **Open work** | `.agents/backlog/README.md` | Removed when the fix is in the code |

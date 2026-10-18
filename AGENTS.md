@@ -146,9 +146,11 @@ The start script (`npm start`) provides:
 │   │   └── README.md
 │   ├── scripts/                    # Utility scripts (JavaScript only)
 │   │   └── check-markdown-links.js # Checks the relative links of markdown files
-│   └── skills/                     # On-demand domain knowledge
-│       ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
-│       └── roomle-pr-resolution.md # Resolving a pull request's review
+│   ├── skills/                     # On-demand domain knowledge
+│   │   ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
+│   │   └── roomle-pr-resolution.md # Resolving a pull request's review
+│   └── wiki/                       # Wiki pages: durable living-reference answers
+│       └── roomle-configurator-api-for-mcp.md # The roomle-ui API the MCP server needs
 ├── .temp/                          # Scratch space, git-ignored
 ├── .github/
 │   └── copilot-instructions.md     # GitHub Copilot specific instructions
@@ -301,7 +303,8 @@ The `.agents/` folder serves as the "digital brain" for roomle-configurator-mcp,
 ├── feature-analysis/             # Feature investigations and decisions
 ├── refactoring-analysis/         # Refactoring analyses with reports
 ├── scripts/                      # Utility scripts (JavaScript only)
-└── skills/                       # On-demand domain knowledge (skills)
+├── skills/                       # On-demand domain knowledge (skills)
+└── wiki/                         # Wiki pages (living reference, no lifecycle)
 ```
 
 **IMPORTANT**: All scripts in `.agents/scripts/` MUST be JavaScript (Node.js), not Python. This ensures consistency with the repository's primary language and tooling.
@@ -332,6 +335,7 @@ A repository the work leaves unchanged is named only where a reader would expect
 | Architecture decisions | Create a numbered ADR in `.agents/decisions/` (create the folder with the first one) |
 | Open work | `.agents/backlog/README.md` |
 | Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge |
+| Wiki page | new file in `.agents/wiki/` with kebab-case slug |
 
 **Important**: Analysis documents in `.agents/bug-analysis/`, `.agents/feature-analysis/`, and `.agents/refactoring-analysis/` are **historical records** — they document the analysis process and decisions, but the durable knowledge should be promoted to living-reference documentation in `docs/` or the skill files.
 
