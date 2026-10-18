@@ -12,10 +12,11 @@ The analysis folders hold **only work that has not landed**:
 - `.agents/bug-analysis/` — bug analyses with status `Open`
 - `.agents/refactoring-analysis/` — refactoring analyses with status `Open`
 
-Every document whose work has landed is closed out: its durable outcome is promoted into the
-living reference, and the document is deleted. Open work stays untouched. When work that has an
-analysis is being committed, close the analysis out in the same branch while the context is hot;
-this skill is the sweep over all three folders.
+Every document whose work has landed on `master` is closed out: its durable outcome is promoted
+into the living reference, and the document is deleted. Open work stays untouched. When work that
+has an analysis is being committed, promote the durable outcome and set the analysis's status in the
+same branch while the context is hot; the document itself is deleted once the work is on `master` —
+this skill is the sweep that performs that deletion over all three folders.
 
 The status values are the ones of [the digital brain index](../README.md): bug `Open` / `Fixed`,
 feature `Open` / `Implemented` / `Rejected`, refactoring `Open` / `Done`. Close out `Implemented`
@@ -31,13 +32,13 @@ each named repository.
 
 A document counts as landed only when all of these hold:
 
-- The commit is reachable: `git log --oneline --grep=<slug>`, `git merge-base --is-ancestor <sha>
-  HEAD`. On the current branch, the branch's own commits count.
-- The behaviour is in the code at HEAD: the tool, method or feature the analysis names exists
+- The commit is reachable from `master` in each affected repository: `git fetch origin master`
+  once, then `git merge-base --is-ancestor <sha> origin/master` — for roomle-ui, its own checkout's
+  `origin/master`. Commits that are only on an unmerged branch do not count: the lifecycle deletes
+  an analysis once its work is on `master`.
+- The behaviour is in the code on `master`: the tool, method or feature the analysis names exists
   where the analysis said it would land (grep the tool registration, the page allow-list, the
   public method).
-- An analysis that spans roomle-ui counts as landed only when the roomle-ui side is on that
-  repository's `master` — check the roomle-ui checkout, not only this repository.
 - The repository gates pass: `npm test`, `npm run typecheck`, `npm run lint`,
   `npm run format:check`.
 
@@ -91,9 +92,14 @@ link to it at the living-reference location that now carries the outcome, and re
 
 ### 4. Check
 
-- Link check over every markdown file: `node .agents/scripts/check-markdown-links.js` with the
-  result `bad 0`.
-- No plain-text mention of a deleted path: `grep -rn "<deleted slug>" --include='*.md' .`
+- Link check over every markdown file:
+  `find . -name '*.md' -not -path './node_modules/*' -not -path './.temp/*' -not -path './configurator-mcp/*/node_modules/*' | sort | xargs node .agents/scripts/check-markdown-links.js`
+  — the result is `bad 0`. Without file arguments the script checks nothing.
+- No plain-text mention of a deleted path: `grep -rn "<analysis folder>/<deleted slug>"
+  --include='*.md' .` (for example `feature-analysis/<deleted slug>`) — search the deleted folder
+  plus filename, not the bare slug: the promoted context document keeps the same filename
+  (`context/<deleted slug>.md`), and links to it are expected. The link check above catches a
+  broken filename-only link.
 - `npm run format:check` passes (Markdown is not formatted, but the check must).
 
 ### 5. Commit
