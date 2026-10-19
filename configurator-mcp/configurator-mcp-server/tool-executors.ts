@@ -3,6 +3,8 @@ import {
   CAPABILITY_SECTIONS,
   type ConfiguratorApi,
   type ConfiguratorCapabilitySection,
+  type ConfigurationOperationName,
+  type ConfigurationOperationPayload,
   type ConfigurationOperationQueryPayload,
   type ConfigurationOperationQueryType,
 } from './configurator-api';
@@ -18,6 +20,12 @@ const dockingChildSchema = z.union([
   z.strictObject({ itemId: z.string() }),
   z.strictObject({ configuration: z.string() }),
 ]);
+
+const positionSchema = z.strictObject({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+});
 
 export const configurationQueryInputSchemas: Record<
   ConfigurationOperationQueryType,
@@ -42,6 +50,45 @@ export const configurationQueryInputSchemas: Record<
     runtimeId: z.number(),
     redockChildrenToParent: z.boolean(),
   },
+};
+
+// The payload shapes of executeConfigurationOperation, one per operation. The
+// server registers the same shapes as each write tool's inputSchema; the
+// executor validates again before any page call. The shapes are not strict, so
+// a dock pair a get-docking-positions read returned pastes unchanged - the
+// keys the operation does not take are stripped before the page call.
+export const configurationOperationInputSchemas: Record<
+  ConfigurationOperationName,
+  z.ZodRawShape
+> = {
+  changeComponentParameter: {
+    runtimeId: z.number(),
+    key: z.string(),
+    value: z.string(),
+  },
+  changeGlobalParameter: { key: z.string(), value: z.string() },
+  dockComponent: {
+    child: dockingChildSchema,
+    parentId: z.number(),
+    parentDockId: z.number(),
+    position: positionSchema.optional(),
+    insertInBetween: z.boolean().optional(),
+  },
+  dragComponent: {
+    runtimeId: z.number(),
+    parentId: z.number(),
+    parentDockId: z.number(),
+    childDockId: z.number(),
+    position: positionSchema.optional(),
+    insertInBetween: z.boolean().optional(),
+  },
+  deleteComponent: {
+    runtimeId: z.number(),
+    redockChildrenToParent: z.boolean(),
+  },
+  loadConfiguration: { configuration: z.string() },
+  undo: {},
+  redo: {},
 };
 
 /** One read of the active configuration through queryConfigurationOperation; never enters the history queue. */
@@ -119,7 +166,7 @@ export const runHistoryStep = (
       return { [done]: false, ...state(), hint: NOTHING_TO[direction] };
     }
     const eventsBefore = history.events;
-    await configuratorApi.extended[direction]();
+    await configuratorApi.extended.executeConfigurationOperation(direction);
     const confirmed = await history.waitForEvents(
       eventsBefore + 1,
       HISTORY_EVENT_WAIT_MS
@@ -128,5 +175,41 @@ export const runHistoryStep = (
       [done]: confirmed,
       ...state(),
       ...(!confirmed && { hint: NOT_CONFIRMED[direction] }),
+    };
+  });
+
+const NOT_CONFIRMED_WRITE =
+  'The configurator did not report the change - the configuration may be unchanged.';
+
+/**
+ * One write of the active configuration through executeConfigurationOperation.
+ * Every write lands one step in the undo history; the result reports the page's
+ * result plus the confirmation of that step and the history state after it.
+ */
+export const runConfigurationOperationWrite = (
+  api: ConfiguratorApi,
+  history: HistoryState,
+  name: ConfigurationOperationName,
+  payload?: ConfigurationOperationPayload
+): Promise<Record<string, unknown>> =>
+  oneAtATime(async () => {
+    const parsed = z
+      .object(configurationOperationInputSchemas[name])
+      .parse(payload ?? {});
+    const eventsBefore = history.events;
+    const result = await api.extended.executeConfigurationOperation(
+      name,
+      parsed
+    );
+    const confirmed = await history.waitForEvents(
+      eventsBefore + 1,
+      HISTORY_EVENT_WAIT_MS
+    );
+    return {
+      ...(result as Record<string, unknown>),
+      confirmed,
+      canUndo: history.canUndo,
+      canRedo: history.canRedo,
+      ...(!confirmed && { hint: NOT_CONFIRMED_WRITE }),
     };
   });

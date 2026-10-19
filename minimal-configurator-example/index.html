@@ -37,11 +37,12 @@
 
       // The configurator methods the MCP server may call on this page; the
       // server names the same methods (configurator-mcp-server/configurator-api.ts).
+      // Every tool is one generic operation API: the reads relay
+      // queryConfigurationOperation, the writes (including undo and redo)
+      // relay executeConfigurationOperation.
       const CONFIGURATOR_METHODS = [
-        'undo',
-        'redo',
-        'getConfiguratorCapabilities',
         'queryConfigurationOperation',
+        'executeConfigurationOperation',
       ];
       const BRIDGE_PROTOCOL = 2;
       const TOOL_STATUS_PREFIX = '[tool] ';

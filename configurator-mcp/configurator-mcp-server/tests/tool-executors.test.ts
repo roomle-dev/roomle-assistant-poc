@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   ConfiguratorApi,
+  ConfigurationOperationName,
+  ConfigurationOperationPayload,
   ConfigurationOperationQueryPayload,
   ConfigurationOperationQueryType,
 } from '../configurator-api';
@@ -10,20 +12,17 @@ import { PageBridge } from '../page-bridge';
 import {
   HISTORY_EVENT_WAIT_MS,
   runConfigurationOperationQuery,
+  runConfigurationOperationWrite,
   runHistoryStep,
   readConfiguratorCapabilities,
 } from '../tool-executors';
 import { attachPage, historyEvent } from './fake-page-socket';
 
-// A configurator page whose undo and redo report the history as the
-// configurator does: the event comes before the call returns.
+// A configurator page whose operations report the history as the configurator
+// does: the event comes before the call returns.
 const createConfigurator = (history: HistoryState) => {
   const api: ConfiguratorApi = {
     extended: {
-      getConfiguratorCapabilities: vi.fn(async () => ({
-        complete: true,
-        unresolved: [],
-      })),
       queryConfigurationOperation: vi.fn(
         async (type: ConfigurationOperationQueryType) => ({
           type,
@@ -31,8 +30,13 @@ const createConfigurator = (history: HistoryState) => {
           capabilities: { complete: true, unresolved: [] },
         })
       ),
-      undo: vi.fn(async () => history.changed(false, true)),
-      redo: vi.fn(async () => history.changed(true, false)),
+      executeConfigurationOperation: vi.fn(
+        async (name: ConfigurationOperationName) => {
+          if (name === 'undo') history.changed(false, true);
+          else history.changed(true, false);
+          return { type: name, context: {}, configurationHash: 'after' };
+        }
+      ),
     },
   };
   return api;
@@ -63,7 +67,7 @@ describe('readConfiguratorCapabilities', () => {
       );
     }
     expect(events).not.toHaveBeenCalled();
-    expect(api.extended.undo).not.toHaveBeenCalled();
+    expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
     expect(query).toHaveBeenNthCalledWith(1, 'capabilities', {
       include: ['materials'],
     });
@@ -136,9 +140,7 @@ describe('runConfigurationOperationQuery', () => {
         api.extended.queryConfigurationOperation
       ).toHaveBeenCalledExactlyOnceWith(type, expected);
       expect(events).not.toHaveBeenCalled();
-      expect(api.extended.undo).not.toHaveBeenCalled();
-      expect(api.extended.redo).not.toHaveBeenCalled();
-      expect(api.extended.getConfiguratorCapabilities).not.toHaveBeenCalled();
+      expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
     }
   );
 
@@ -170,15 +172,13 @@ describe('runConfigurationOperationQuery', () => {
         runConfigurationOperationQuery(api, type, payload)
       ).rejects.toThrow(/invalid/i);
       expect(api.extended.queryConfigurationOperation).not.toHaveBeenCalled();
-      expect(api.extended.getConfiguratorCapabilities).not.toHaveBeenCalled();
-      expect(api.extended.undo).not.toHaveBeenCalled();
-      expect(api.extended.redo).not.toHaveBeenCalled();
+      expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
     }
   );
 });
 
 describe('runHistoryStep', () => {
-  it('runs undo on the page and reports the history state the page sent after it', async () => {
+  it('runs undo on the page through the execute API and reports the history state the page sent after it', async () => {
     const history = new HistoryState();
     history.changed(true, false);
     const api = createConfigurator(history);
@@ -188,10 +188,12 @@ describe('runHistoryStep', () => {
       canUndo: false,
       canRedo: true,
     });
-    expect(api.extended.undo).toHaveBeenCalledTimes(1);
+    expect(
+      api.extended.executeConfigurationOperation
+    ).toHaveBeenCalledExactlyOnceWith('undo');
   });
 
-  it('runs redo on the page and reports the history state', async () => {
+  it('runs redo on the page through the execute API and reports the history state', async () => {
     const history = new HistoryState();
     history.changed(false, true);
     const api = createConfigurator(history);
@@ -201,7 +203,9 @@ describe('runHistoryStep', () => {
       canUndo: true,
       canRedo: false,
     });
-    expect(api.extended.redo).toHaveBeenCalledTimes(1);
+    expect(
+      api.extended.executeConfigurationOperation
+    ).toHaveBeenCalledExactlyOnceWith('redo');
   });
 
   it('answers nothing to undo as a result, not an error, without calling the page', async () => {
@@ -215,7 +219,7 @@ describe('runHistoryStep', () => {
       canRedo: false,
       hint: 'Nothing to undo: the configuration has no change that undo can revert.',
     });
-    expect(api.extended.undo).not.toHaveBeenCalled();
+    expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
   });
 
   it('answers nothing to redo as a result, not an error', async () => {
@@ -230,7 +234,7 @@ describe('runHistoryStep', () => {
       canRedo: false,
       hint: expect.stringMatching(/^Nothing to redo: /),
     });
-    expect(api.extended.redo).not.toHaveBeenCalled();
+    expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
   });
 
   it('asks the page while it has not reported its history', async () => {
@@ -244,7 +248,9 @@ describe('runHistoryStep', () => {
       canUndo: false,
       canRedo: true,
     });
-    expect(api.extended.undo).toHaveBeenCalledTimes(1);
+    expect(
+      api.extended.executeConfigurationOperation
+    ).toHaveBeenCalledExactlyOnceWith('undo');
   });
 
   it('fails with the connection error, not with nothing to undo, while no page is connected', async () => {
@@ -274,15 +280,14 @@ describe('runHistoryStep', () => {
     history.changed(true, false);
     const api: ConfiguratorApi = {
       extended: {
-        getConfiguratorCapabilities: vi.fn(async () => ({
-          complete: true,
-          unresolved: [],
-        })),
         queryConfigurationOperation: vi.fn(),
-        undo: vi.fn(async () => {
-          throw new Error('The configurator page disconnected');
-        }),
-        redo: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          async (name: ConfigurationOperationName) => {
+            if (name === 'undo') {
+              throw new Error('The configurator page disconnected');
+            }
+          }
+        ),
       },
     };
 
@@ -297,13 +302,8 @@ describe('runHistoryStep', () => {
     history.changed(true, false);
     const api: ConfiguratorApi = {
       extended: {
-        getConfiguratorCapabilities: vi.fn(async () => ({
-          complete: true,
-          unresolved: [],
-        })),
         queryConfigurationOperation: vi.fn(),
-        undo: vi.fn(async () => undefined),
-        redo: vi.fn(),
+        executeConfigurationOperation: vi.fn(async () => undefined),
       },
     };
 
@@ -325,26 +325,24 @@ describe('runHistoryStep', () => {
     let finishUndo = () => {};
     const api: ConfiguratorApi = {
       extended: {
-        getConfiguratorCapabilities: vi.fn(async () => ({
-          complete: true,
-          unresolved: [],
-        })),
         queryConfigurationOperation: vi.fn(),
-        undo: vi.fn(
-          () =>
-            new Promise<void>((resolve) => {
-              order.push('undo started');
-              finishUndo = () => {
-                history.changed(false, true);
-                order.push('undo done');
-                resolve();
-              };
-            })
+        executeConfigurationOperation: vi.fn(
+          (name: ConfigurationOperationName) => {
+            if (name === 'undo') {
+              return new Promise<void>((resolve) => {
+                order.push('undo started');
+                finishUndo = () => {
+                  history.changed(false, true);
+                  order.push('undo done');
+                  resolve();
+                };
+              });
+            }
+            order.push('redo started');
+            history.changed(true, false);
+            return Promise.resolve();
+          }
         ),
-        redo: vi.fn(async () => {
-          order.push('redo started');
-          history.changed(true, false);
-        }),
       },
     };
 
@@ -356,5 +354,262 @@ describe('runHistoryStep', () => {
     await expect(undo).resolves.toMatchObject({ undone: true });
     await expect(redo).resolves.toMatchObject({ redone: true });
     expect(order).toEqual(['undo started', 'undo done', 'redo started']);
+  });
+});
+
+describe('runConfigurationOperationWrite', () => {
+  it.each([
+    [
+      'changeComponentParameter',
+      { runtimeId: 7, key: 'width', value: '120' },
+      { runtimeId: 7, key: 'width', value: '120' },
+    ],
+    [
+      'changeGlobalParameter',
+      { key: 'height', value: '80' },
+      { key: 'height', value: '80' },
+    ],
+    [
+      'dockComponent',
+      { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+      { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+    ],
+    [
+      'dockComponent',
+      {
+        child: { componentId: 'usm:shelf' },
+        parentId: 1,
+        parentDockId: 0,
+        position: { x: 0, y: 0, z: 0 },
+        insertInBetween: true,
+      },
+      {
+        child: { componentId: 'usm:shelf' },
+        parentId: 1,
+        parentDockId: 0,
+        position: { x: 0, y: 0, z: 0 },
+        insertInBetween: true,
+      },
+    ],
+    [
+      'dragComponent',
+      { runtimeId: 7, parentId: 1, parentDockId: 0, childDockId: 2 },
+      { runtimeId: 7, parentId: 1, parentDockId: 0, childDockId: 2 },
+    ],
+    [
+      'deleteComponent',
+      { runtimeId: 7, redockChildrenToParent: true },
+      { runtimeId: 7, redockChildrenToParent: true },
+    ],
+    [
+      'loadConfiguration',
+      { configuration: '{"componentId":"usm:frame"}' },
+      { configuration: '{"componentId":"usm:frame"}' },
+    ],
+  ] as [
+    ConfigurationOperationName,
+    ConfigurationOperationPayload,
+    ConfigurationOperationPayload,
+  ][])(
+    'relays %s with payload %j and confirms the history event',
+    async (name, payload, expected) => {
+      const history = new HistoryState();
+      const api = createConfigurator(history);
+      const events = vi.spyOn(history, 'waitForEvents');
+      const execute = vi.mocked(api.extended.executeConfigurationOperation);
+
+      await expect(
+        runConfigurationOperationWrite(api, history, name, payload)
+      ).resolves.toEqual({
+        type: name,
+        context: {},
+        configurationHash: 'after',
+        confirmed: true,
+        canUndo: true,
+        canRedo: false,
+      });
+      expect(execute).toHaveBeenCalledExactlyOnceWith(name, expected);
+      expect(events).toHaveBeenCalledExactlyOnceWith(1, HISTORY_EVENT_WAIT_MS);
+    }
+  );
+
+  it('strips the keys a dock pair read returns but the operation does not take', async () => {
+    const history = new HistoryState();
+    const api = createConfigurator(history);
+    const execute = vi.mocked(api.extended.executeConfigurationOperation);
+
+    await runConfigurationOperationWrite(api, history, 'dockComponent', {
+      child: { itemId: 'usm:shelf' },
+      parentId: 1,
+      parentDockId: 0,
+      childDockId: 3,
+      lineSegments: [],
+      displacedComponents: [],
+    });
+
+    expect(execute).toHaveBeenCalledExactlyOnceWith('dockComponent', {
+      child: { itemId: 'usm:shelf' },
+      parentId: 1,
+      parentDockId: 0,
+    });
+  });
+
+  it.each([
+    ['changeComponentParameter', { runtimeId: 7, key: 'width' }],
+    ['changeComponentParameter', { runtimeId: 'x', key: 'width', value: '1' }],
+    ['changeGlobalParameter', { value: '1' }],
+    ['dockComponent', { parentId: 1, parentDockId: 0 }],
+    ['dockComponent', { child: {}, parentId: 1, parentDockId: 0 }],
+    ['dockComponent', { child: { itemId: 'usm:shelf' } }],
+    [
+      'dockComponent',
+      { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: '0' },
+    ],
+    [
+      'dockComponent',
+      {
+        child: { itemId: 'usm:shelf' },
+        parentId: 1,
+        parentDockId: 0,
+        position: { x: 0, y: 0 },
+      },
+    ],
+    [
+      'dockComponent',
+      {
+        child: { itemId: 'usm:shelf' },
+        parentId: 1,
+        parentDockId: 0,
+        insertInBetween: 1,
+      },
+    ],
+    ['dragComponent', { runtimeId: 7, parentId: 1, parentDockId: 0 }],
+    ['deleteComponent', { runtimeId: 7 }],
+    ['deleteComponent', { runtimeId: 7, redockChildrenToParent: 'yes' }],
+    ['loadConfiguration', {}],
+    ['loadConfiguration', { configuration: 4 }],
+  ] as [ConfigurationOperationName, ConfigurationOperationPayload][])(
+    'rejects the %s payload %j before any page call',
+    async (name, payload) => {
+      const history = new HistoryState();
+      const api = createConfigurator(history);
+
+      await expect(
+        runConfigurationOperationWrite(api, history, name, payload)
+      ).rejects.toThrow(/invalid/i);
+      expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
+    }
+  );
+
+  it('reports the history state and a hint when the page sends no event in time', async () => {
+    vi.useFakeTimers();
+    const history = new HistoryState();
+    history.changed(true, false);
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(async () => ({
+          type: 'deleteComponent',
+          context: {},
+          configurationHash: 'after',
+          runtimeId: 7,
+          redockChildrenToParent: true,
+          componentsDeleted: [7],
+        })),
+      },
+    };
+
+    const write = runConfigurationOperationWrite(
+      api,
+      history,
+      'deleteComponent',
+      { runtimeId: 7, redockChildrenToParent: true }
+    );
+    await vi.advanceTimersByTimeAsync(HISTORY_EVENT_WAIT_MS);
+
+    await expect(write).resolves.toEqual({
+      type: 'deleteComponent',
+      context: {},
+      configurationHash: 'after',
+      runtimeId: 7,
+      redockChildrenToParent: true,
+      componentsDeleted: [7],
+      confirmed: false,
+      canUndo: true,
+      canRedo: false,
+      hint: 'The configurator did not report the change - the configuration may be unchanged.',
+    });
+  });
+
+  it('runs writes one at a time', async () => {
+    const history = new HistoryState();
+    const order: string[] = [];
+    let finishDock = () => {};
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          (name: ConfigurationOperationName) => {
+            order.push(`${name} started`);
+            if (name === 'dockComponent') {
+              return new Promise((resolve) => {
+                finishDock = () => {
+                  history.changed(true, false);
+                  order.push('dock done');
+                  resolve({ type: name, context: {}, configurationHash: 'a' });
+                };
+              });
+            }
+            history.changed(true, false);
+            order.push('delete done');
+            return Promise.resolve({
+              type: name,
+              context: {},
+              configurationHash: 'b',
+            });
+          }
+        ),
+      },
+    };
+
+    const dock = runConfigurationOperationWrite(api, history, 'dockComponent', {
+      child: { itemId: 'usm:shelf' },
+      parentId: 1,
+      parentDockId: 0,
+    });
+    const deletion = runConfigurationOperationWrite(
+      api,
+      history,
+      'deleteComponent',
+      { runtimeId: 7, redockChildrenToParent: true }
+    );
+    await vi.waitFor(() => expect(order).toEqual(['dockComponent started']));
+    finishDock();
+
+    await expect(dock).resolves.toMatchObject({ confirmed: true });
+    await expect(deletion).resolves.toMatchObject({ confirmed: true });
+    expect(order).toEqual([
+      'dockComponent started',
+      'dock done',
+      'deleteComponent started',
+      'delete done',
+    ]);
+  });
+
+  it('reports a failed page call to the caller', async () => {
+    const history = new HistoryState();
+    history.changed(true, false);
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(async () => {
+          throw new Error('No configurator page connected.');
+        }),
+      },
+    };
+
+    await expect(
+      runConfigurationOperationWrite(api, history, 'undo', {})
+    ).rejects.toThrow('No configurator page connected.');
   });
 });

@@ -5,8 +5,9 @@ agent reads what the connected configurator can be — the recursively declared 
 what is currently valid in the live session. The result distinguishes **declared possibilities** from
 **currently evaluated choices**: reading only the current parameters misses dormant components and
 conditional alternatives; reading only component definitions misses evaluated conditions,
-shared-parameter intersections and material-group contents. The contract is one SDK read method in
-roomle-ui, `RoomleConfigurator.getConfiguratorCapabilities(include?)`, and one MCP read tool here
+shared-parameter intersections and material-group contents. The contract is one SDK read —
+`RoomleConfigurator.queryConfigurationOperation('capabilities', { include })`, built on
+`getConfiguratorCapabilities(include?)` — and one MCP read tool here
 that relays it. The design decision is [ADR 0001 — SDK-owned configurator
 capabilities](../decisions/0001-sdk-owned-configurator-capabilities.md); the user-facing reference is
 [the tools section of the server reference](../../docs/configurator-mcp-server.md#tools).
@@ -15,19 +16,21 @@ capabilities](../decisions/0001-sdk-owned-configurator-capabilities.md); the use
 
 ```text
 MCP tool get-configurator-capabilities
-  → ConfiguratorApi.extended.getConfiguratorCapabilities(include)
+  → ConfiguratorApi.extended.queryConfigurationOperation('capabilities', { include })
   → PageBridge call over /bridge (protocol 2)
-  → example page: instance.extended.getConfiguratorCapabilities(include)
-  → iframe RoomleConfigurator: dynamic import of the collector
+  → example page: instance.extended.queryConfigurationOperation('capabilities', { include })
+  → iframe RoomleConfigurator: dynamic import of the operation implementation
+  → getConfiguratorCapabilities(include?): dynamic import of the collector
   → collector in roomle-ui common-core/src/mcp-api/configurator-capabilities.ts
   → JSON result over the same route
 ```
 
-The SDK method is thin: it dynamically imports the collector on first call — keeping the collector
-out of the initial SDK bundle — and delegates with the current configurator context, kernel access
-and RAPI access. The embedding-lib announces every public prototype method automatically, so the
-method reaches a configurator page as `instance.extended.getConfiguratorCapabilities` and, in the
-planner's isolation mode, the planner's inner configurator as `instance.configurator…`. The public
+The SDK methods are thin: they dynamically import the collector on first call — keeping the
+collector out of the initial SDK bundle — and delegate with the current configurator context,
+kernel access and RAPI access. The embedding-lib announces every public prototype method
+automatically, so the generic API reaches a configurator page as
+`instance.extended.queryConfigurationOperation` and, in the planner's isolation mode, the planner's
+inner configurator as `instance.configurator…`. The public
 types are exported type-only from the web-sdk index, and the contract for embedders is documented in
 roomle-ui's `packages/embedding-lib/docs/configurator-capabilities.md`.
 
@@ -111,10 +114,10 @@ Parameter semantics the JSON preserves:
   says that it reads the connected configurator, explains declared versus currently valid choices,
   and does not change the product.
 - `configurator-api.ts` relays the call with its arguments and returns the JSON, preserving the
-  `clientId`; the result passes through as JSON text. Undo/redo keep their void relay contract.
+  `clientId`; the result passes through as JSON text.
 - The page allow-list (`CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html`) carries
-  `getConfiguratorCapabilities` beside `undo` and `redo`; a UI build without the method produces
-  an explicit update message naming the method, not an empty capabilities object.
+  exactly `queryConfigurationOperation` and `executeConfigurationOperation`; a UI build without them
+  produces an explicit update message naming the method, not an empty capabilities object.
 - The server instructions and the chat system prompt tell the agent to inspect capabilities for
   product questions, to use current kernel choices for what is available now, and to acknowledge
   unresolved information when `complete` is false. Chat recovery describes an interrupted read as
@@ -126,9 +129,10 @@ Parameter semantics the JSON preserves:
 The kernel determines compatibility from evaluated docking definitions and the actual assemblies;
 the read provides discoverable children and docking constraints, explicitly marked as declarations
 or current eligibility. It does not calculate dock IDs, rotations, line positions or displacement,
-and it is not a "valid placements for any future product" solver. A later mutation API asks the
-kernel for valid candidates and translates an agent's target/relation into a concrete docking
-operation.
+and it is not a "valid placements for any future product" solver. The docking reads
+(`get-docking-positions`, `get-component-docking-positions`) ask the kernel for the valid
+candidates, and the write tools (`dock-component`, `drag-component`) perform the concrete docking
+operation at a queried pair.
 
 ## Where things live
 
@@ -150,6 +154,6 @@ operation.
 - [The configurator MCP server skill](../skills/configurator-mcp-server.md) — the capabilities
   read, adding a tool, tests
 - [The roomle-ui configurator API for the MCP server](../wiki/roomle-configurator-api-for-mcp.md) —
-  the API map, including the open query and operation catalogs
+  the API map, including the implemented query and operation catalogs
 - [The configurator example with the AI Planning Assistant chat](configurator-example-with-planning-assistant-chat.md)
   — the chat that asks the product questions

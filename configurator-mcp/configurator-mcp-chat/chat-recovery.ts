@@ -3,6 +3,12 @@ import type { ToolExecutionOptions, ToolSet } from 'ai';
 const TOOL_LABELS: Record<string, string> = {
   undo: 'Undo',
   redo: 'Redo',
+  'change-component-parameter': 'Component parameter change',
+  'change-global-parameter': 'Global parameter change',
+  'dock-component': 'Component dock',
+  'drag-component': 'Component drag',
+  'delete-component': 'Component deletion',
+  'load-configuration': 'Configuration load',
   'get-configurator-capabilities': 'Capabilities read',
   'get-configuration': 'Configuration read',
   'get-component-parameters': 'Component parameters read',
@@ -61,7 +67,7 @@ const resultDetails = (data: any): string[] => {
   if (!data || typeof data !== 'object')
     return data == null ? [] : [textOf(data)];
   const details: string[] = [];
-  for (const key of ['undone', 'redone', 'canUndo', 'canRedo']) {
+  for (const key of ['undone', 'redone', 'confirmed', 'canUndo', 'canRedo']) {
     if (data[key] !== undefined) details.push(`${key}: ${textOf(data[key])}`);
   }
   if (data.hint) details.push(textOf(data.hint));
@@ -126,7 +132,17 @@ export const createChatRecovery = (tools: ToolSet) => {
         continue;
       }
       if (outcome.status === 'returned' && !outcome.result?.isError) {
-        const details = resultDetails(resultData(outcome.result));
+        const data = resultData(outcome.result);
+        // A write the configurator did not confirm may have left the
+        // configuration unchanged; the undo and redo results carry no
+        // confirmed key and keep the wording below.
+        if (data?.confirmed === false) {
+          lines.push(
+            `- Unconfirmed ${label}: ${data?.hint ?? 'the configurator did not report the change'}. Check the configuration before trying this operation again.`
+          );
+          continue;
+        }
+        const details = resultDetails(data);
         lines.push(
           `- Completed ${label}: ${details.length ? details.join('; ') : 'the tool returned successfully.'}`
         );

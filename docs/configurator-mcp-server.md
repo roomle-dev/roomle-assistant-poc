@@ -1,11 +1,13 @@
 # Configurator MCP Server — Reference
 
-The configurator MCP server lets an AI agent inspect a Roomle configuration and its product options, and undo or redo changes in a live configurator
-session. Its tools call the API of the `RoomleConfigurator` of the roomle-ui web-sdk, and nothing
+The configurator MCP server lets an AI agent inspect a Roomle configuration and its product options, change the
+configuration, and undo or redo changes in a live configurator session. Its tools call the API of the
+`RoomleConfigurator` of the roomle-ui web-sdk, and nothing
 else: the connected page executes the calls on the configurator it embeds. The tools are eight reads —
 `get-configurator-capabilities`, `get-configuration`, `get-component-parameters`, `get-global-parameters`,
 `get-possible-children`, `get-docking-positions`, `get-component-docking-positions`, `get-delete-impact` —
-and `undo` and `redo`.
+six writes — `change-component-parameter`, `change-global-parameter`, `dock-component`, `drag-component`,
+`delete-component`, `load-configuration` — and `undo` and `redo`.
 
 Three processes work together, all local:
 
@@ -47,10 +49,10 @@ A Rubens UI with the configurator's AI Planning Assistant window is needed for t
 starts no chat on a configurator without `planningAssistantOutput` and logs that. Undo and redo
 through an external MCP client work with any configurator.
 
-The reads require a Rubens UI that exposes `RoomleConfigurator.queryConfigurationOperation` — every read
-tool relays it, `get-configurator-capabilities` included. If the connected UI is older, a read returns an
-error naming the method and asking to update the UI; undo and redo remain available. Use `npm run dev` with
-the local UI feature branch for development.
+The tools require a Rubens UI that exposes `RoomleConfigurator.queryConfigurationOperation` and
+`RoomleConfigurator.executeConfigurationOperation` — every tool relays one of the two, the capabilities read
+included. If the connected UI is older, the tool returns an error naming the method and asking to update the
+UI. Use `npm run dev` with the local UI feature branch for development.
 
 ## The page
 
@@ -65,7 +67,7 @@ The page opens the WebSocket `ws://localhost:<mcp_port>/bridge` and:
 - on `ready`, sends the configurator's last undo history state as a `historyChange` event, and
   enables the window;
 - executes a `call` on `instance.extended` when its method is in `CONFIGURATOR_METHODS`
-  (`undo`, `redo`, `getConfiguratorCapabilities`, `queryConfigurationOperation`) and answers with `result`; any other method is refused without touching the
+  (`queryConfigurationOperation`, `executeConfigurationOperation`) and answers with `result`; any other method is refused without touching the
   configurator;
 - relays every `onHistoryChange(undo, redo)` of the configurator as a `historyChange` event;
 - reconnects every 3 s after a lost connection; a server that already serves another page closes
@@ -97,6 +99,12 @@ again once a page connects anew or disconnects.
 | --- | --- | --- |
 | `undo` | Reverts the last change of the configuration, as the configurator's undo button does | `{ undone, canUndo, canRedo, hint? }` |
 | `redo` | Brings back the change the last undo reverted; a new change of the configuration ends redo | `{ redone, canUndo, canRedo, hint? }` |
+| `change-component-parameter` | Changes a parameter of one component | JSON with `type`, `context`, `configurationHash`, `runtimeId`, `key`, `value`, plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
+| `change-global-parameter` | Changes a global parameter of the configuration | JSON with `type`, `context`, `configurationHash`, `scope`, `key`, `value`, plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
+| `dock-component` | Docks a possible child at a dock pair of the configuration | JSON with `type`, `context`, `configurationHash`, `runtimeId` (the new component), plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
+| `drag-component` | Moves an existing component to a dock pair | JSON with `type`, `context`, `configurationHash`, `runtimeId`, plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
+| `delete-component` | Deletes one component, its children re-docked to the parent or deleted with it | JSON with `type`, `context`, `configurationHash`, `runtimeId`, `redockChildrenToParent`, `componentsDeleted`, plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
+| `load-configuration` | Loads an assembly configuration as the new configuration | JSON with `type`, `context`, `configurationHash`, plus `confirmed`, `canUndo`, `canRedo`, `hint?` |
 | `get-configurator-capabilities` | Reads current configuration state and recursively declared product options | JSON with `context`, `complete`, `unresolved` and requested sections |
 | `get-configuration` | Reads the current configuration as parsed JSON plus its hash | JSON with `type`, `context`, `configuration`, `configurationHash` |
 | `get-component-parameters` | Reads the current parameters and parameter groups of one component | JSON with `type`, `context`, `runtimeId`, `componentId`, `parameters`, `groups` |
@@ -113,6 +121,16 @@ the configurator and waits for the history event of the step; the configurator f
 call returns, and a step without an event within 1 s is reported as `undone: false` with a hint
 that the configurator did not report it. A failed configurator call — no page, a lost page, a
 timeout — is a tool error with the message.
+
+The six write tools each relay one `executeConfigurationOperation(name, payload)` call on the page — the
+tool's name fixes the operation, its arguments are the payload, validated before the page call. The payload
+shapes are not strict: the keys a query result carries but the operation does not take (a dock pair's
+`childDockId`, `lineSegments` or `displacedComponents`) are stripped, so a queried dock pair pastes
+unchanged. Every write lands one step in the undo history and runs one at a time, beside no other change.
+The result carries the SDK's JSON plus `confirmed` — whether the configurator reported the change with a
+history event —, `canUndo` and `canRedo`, and a `hint` when the page sent no event within 1 s. A failed
+configurator call — no page, a lost page, a timeout, an invalid dock pair, a refused parameter — is a tool
+error with the message.
 
 The eight read tools each relay one `queryConfigurationOperation(type, payload)` call on the page — the
 tool's name fixes the type, its arguments are the payload, validated before the page call — and return
@@ -148,6 +166,27 @@ placement, computed by the kernel without drawing previews.
 component can be deleted — and `componentsDeleted`, the runtime ids deleted with it, re-docked to the
 parent or not.
 
+`change-component-parameter` takes `runtimeId`, `key` and `value`; the key must be one of the parameters
+`get-component-parameters` returned for the component.
+
+`change-global-parameter` takes `key` and `value`; the key must be one of the parameters
+`get-global-parameters` returned.
+
+`dock-component` takes `child` — exactly one of `componentId`, `itemId` or `configuration` (an assembly
+configuration JSON), as `get-docking-positions` takes it — `parentId` and `parentDockId`, and optional
+`position` and `insertInBetween`. The docked component lands one step in the undo history; the result
+carries its new `runtimeId`.
+
+`drag-component` takes `runtimeId`, `parentId`, `parentDockId` and `childDockId`, and optional `position`
+and `insertInBetween`, as `get-component-docking-positions` returns them.
+
+`delete-component` takes `runtimeId` and `redockChildrenToParent`; read the impact with
+`get-delete-impact` first. The result carries `componentsDeleted`, the runtime ids deleted with the
+component.
+
+`load-configuration` takes `configuration`, an assembly configuration JSON with a root `componentId`, as
+`get-configuration` returned it; the load replaces the configuration.
+
 `get-configurator-capabilities` accepts optional `include`, an array containing `configuration`, `components`, `items`, `parameters`, `materials` or `docking`. Omitted or empty means all; duplicates have no effect. Invalid names are rejected before calling the page.
 
 ```json
@@ -158,7 +197,7 @@ The SDK response passes through as JSON text. `configuration` contains parsed da
 
 `complete: false` and `unresolved` identify unavailable resources; these are successful partial reads. The capabilities read may fetch catalog metadata; configuration-only reads skip catalog discovery.
 
-The server instructions and chat prompt use the read tools for product questions. Declared alternatives can be inactive; current choices come from kernel results. The agent must acknowledge unresolved information. Only undo and redo can modify the configuration. The SDK also exposes the reads through `instance.configurator` in planner isolation; this example remains a standalone configurator host.
+The server instructions and chat prompt name the reads for product questions and the writes for changes. Declared alternatives can be inactive; current choices come from kernel results. The agent must acknowledge unresolved information and report an unconfirmed change as possibly not applied. The SDK also exposes the two operation APIs through `instance.configurator` in planner isolation; this example remains a standalone configurator host.
 
 ### Connecting an MCP client
 
@@ -190,7 +229,7 @@ completed or unconfirmed changes, and completed/partial/incomplete reads, with n
 | `CONFIGURATOR_CHAT_TURN_TIMEOUT_MS` | `300000` | A turn without an answer ends after this time |
 
 The system prompt is the example's own (`SYSTEM_PROMPT` in `chat-config.ts`): the assistant of a
-Roomle product configurator with the eight read tools, `undo` and `redo`. Product answers use returned capabilities and query results; history answers report whether a further undo or redo is possible. Other edits are unavailable. A turn runs up to 16 model steps; the last step may not call a tool, so it ends with
+Roomle product configurator with the eight read tools, the six write tools, `undo` and `redo`. Product answers use returned capabilities and query results; change answers report whether the change was confirmed and whether a further undo or redo is possible. A turn runs up to 16 model steps; the last step may not call a tool, so it ends with
 an answer.
 
 ## Example prompts
@@ -203,7 +242,9 @@ Which finishes are currently available?
 What additions are declared for this product?
 Where can I dock another shelf?
 What happens to the children if I delete the frame?
-Make the shelf blue.     (the assistant explains that this edit is not supported yet)
+Make the shelf blue.
+Add another shelf to the frame.
+Delete the shelf, keeping its children.
 ```
 
 ## Checking it
@@ -216,5 +257,6 @@ npm run format:check
 ```
 
 The live check: the roomle-ui dev server with the configurator's AI Planning Assistant window on
-`:5173`, `npm run dev mistral-medium <api-key>`, a parameter changed in the configurator, a docking
-positions query and `undo` from an external MCP client, "undo" and "redo" in the window.
+`:5173`, `npm run dev mistral-medium <api-key>`, a docking positions query and a dock at a returned
+pair from an external MCP client, a parameter change and a deletion with `undo` and `redo` after
+each, "undo" and "redo" in the window.
