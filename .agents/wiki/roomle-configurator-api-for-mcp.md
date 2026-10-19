@@ -14,7 +14,9 @@ than the UI offers. This page is the map between what an AI agent needs to confi
 — and the API that exists today: which parts the existing methods already cover, and which parts are
 missing and have to be implemented. The query half of the proposal is implemented end to end
 (RoomleCore `getDockPairs` → roomle-ui `queryConfigurationOperation` → the eight MCP read tools); the
-execute half and its catalog remain a proposal — where this page describes them, it says so.
+execute half and its catalog are planned — see the
+[analysis](../feature-analysis/query-and-execute-configuration-operation.md) — where this page
+describes them, it says so.
 
 Paths under `packages/web-sdk/packages/` are relative to that folder of the roomle-ui repository
 (`configurator-core/`, `common-core/`, `planner-core/`, `typings/`). Paths of the MCP server are relative
@@ -81,11 +83,11 @@ Also covered: defining a complete configuration from a configuration JSON — `l
 
 | # | Required operation | Existing API | Status |
 |---|---|---|---|
-| 1 | Change a global parameter of the configuration | `setParameterOfRootComponent(parameter, value)` (`roomle-configurator.ts:1578`), `setParameterOfPlanObject(parameter, value)` (`roomle-configurator.ts:1443`); `setParameter(parameter, value, isRaw)` (`roomle-configurator.ts:1366`) targets the selected component or the plan object | Covered — the methods take a `KernelParameter`; the MCP payload needs key and type, both available from `getParametersOfComponent` / `getParametersOfPlanObject` |
-| 2 | Change a component parameter | `setComponentParameter(runtimeId, parameter, value)` (`roomle-configurator.ts:2287`), `updateComponentParameter(runtimeId, key, value)` (`roomle-configurator.ts:2931`) | Covered |
-| 3 | Dock or insert a component | Not as the UI does it. `dockComponent` (`typings/kernel.ts:824`; SDK `configurator-kernel-access.ts:570`) only docks a component that is already loaded free-flying — in the UI that is the preview component created by the drag; it does not create a component. The kernel's create-and-dock primitive exists but is unwrapped: `loadPlainComponent(conversationId, componentId, serializedComponent)` (RoomleCore `configurator.json:2887`) → `ConfiguratorKernel::loadComponentAndDockNewPlanComponents` (`src/configurator/configurator-kernel.cpp:1120`) creates a new plan component from a definition and docks it; `dockComponentWithPosition` (`configurator.json:3073`) docks an existing component at a dock pair with insert enabled. The MCP operation creates a new component from an item id / component definition / configuration JSON and docks it at a position queried before — no preview ghost, no mouse drag | **Gap** — type and wrap the kernel primitives; compose create + dock |
-| 4 | Delete a component with re-dock enabled or disabled | Kernel: `deleteComponent(planComponentId, redockChildrenToParent)` — "Deletes a single PlanComponent and all its children or tries to dock its children back to the parent" (RoomleCore `configurator.json`; `typings/kernel.ts:762`). The SDK wraps only `deleteMultipleComponents` without the flag (`configurator-kernel-access.ts:934` → `typings/kernel.ts:764`); `RoomleConfigurator.requestDeleteComponent()` (`roomle-configurator.ts:998`) deletes the selected component only | **Gap** — wrap the flagged kernel delete |
-| 5 | Drag a component inside the configuration | For the agent this is a move: re-dock an existing component at a queried position. Kernel: `dockComponent` / `dockComponentWithPosition` (`typings/kernel.ts:824`; RoomleCore `configurator.json:3073`), `cancelDocking(componentId, undoDrag)` to abort (`typings/kernel.ts:784`). The UI's drag preview (`requestPreviewGeometry`) is not used — the positions come from the pure query #7 | **Gap** — wrap dock-with-position for existing components |
+| 1 | Change a global parameter of the configuration | `setParameterOfRootComponent(parameter, value)` (`roomle-configurator.ts:1578`), `setParameterOfPlanObject(parameter, value)` (`roomle-configurator.ts:1443`); `setParameter(parameter, value, isRaw)` (`roomle-configurator.ts:1366`) targets the selected component or the plan object | Planned — the `changeGlobalParameter` operation resolves key and type from the current parameters and sets synchronously through the kernel; payload `{ key, value }` |
+| 2 | Change a component parameter | `setComponentParameter(runtimeId, parameter, value)` (`roomle-configurator.ts:2287`), `updateComponentParameter(runtimeId, key, value)` (`roomle-configurator.ts:2931`) | Planned — the `changeComponentParameter` operation; payload `{ runtimeId, key, value }` |
+| 3 | Dock or insert a component | Not as the UI does it. `dockComponent` (`typings/kernel.ts:840`; SDK `configurator-kernel-access.ts:572`) only docks a component that is already loaded free-flying — in the UI that is the preview component created by the drag; it does not create a component. The kernel's create-and-dock primitive exists but is unwrapped and deprecated: `loadPlainComponent(conversationId, componentId, serializedComponent)` (RoomleCore `configurator.json:2887`) → `ConfiguratorKernel::loadComponentAndDockNewPlanComponents` (`src/configurator/configurator-kernel.cpp:1120`) creates a new plan component from a definition and docks it, but passes no dock target. The MCP operation creates a new component from an item id / component definition / configuration JSON and docks it at a position queried before — no preview ghost, no mouse drag | **Gap — planned** — one new clean kernel API `dockNewComponent` (mirror of `getDockPairs`): creates the component and docks it at the queried pair with the collision test enabled, returns the new runtime id; no preview, no deprecated load API |
+| 4 | Delete a component with re-dock enabled or disabled | Kernel: `deleteComponent(planComponentId, redockChildrenToParent)` — "Deletes a single PlanComponent and all its children or tries to dock its children back to the parent" (RoomleCore `configurator.json`; `typings/kernel.ts:767`). The SDK wraps only `deleteMultipleComponents` without the flag (`configurator-kernel-access.ts:950` → `typings/kernel.ts:769`); `RoomleConfigurator.requestDeleteComponent()` (`roomle-configurator.ts:998`) deletes the selected component only | **Gap — planned** — wrap the flagged kernel delete behind the `isComponentDeletable` gate |
+| 5 | Drag a component inside the configuration | For the agent this is a move: re-dock an existing component at a queried position. Kernel: `dockComponent` (`typings/kernel.ts:840`; SDK `configurator-kernel-access.ts:572`). The UI's drag preview (`requestPreviewGeometry`) is not used — the positions come from the pure query #7 | **Gap — planned** — the existing `dockComponent` wrapper, fed with a pair from `componentDockingPositions` |
 
 ## The design: two generic APIs
 
@@ -102,7 +104,7 @@ roomle-ui therefore proposed two generic APIs that carry everything the MCP tool
   on top.
 - `executeConfigurationOperation(name, payload)` — a write. `name` selects the operation, `payload`
   carries its arguments (e.g. component id, parameter key, new value), the result confirms the
-  operation. **Proposed** — not implemented yet.
+  operation. **Planned** — see the analysis; not implemented yet.
 
 Both are thin, typed methods on `RoomleConfigurator` (`roomle-configurator.ts`); the
 implementations are dynamically imported from `common-core/src/mcp-api/`, following
@@ -134,16 +136,19 @@ All eight rows are implemented end to end: RoomleCore `getDockPairs` → roomle-
 
 ### Operation catalog
 
-Proposed — no operation is implemented yet; `undo` and `redo` remain the only configuration-changing
-tools, and the allow-list restriction to the two generic names happens with this catalog.
+Planned — no operation is implemented yet; `undo` and `redo` remain the only configuration-changing
+tools, and the allow-list restriction to the two generic names happens with this catalog. The
+implementation plan is in the
+[analysis](../feature-analysis/query-and-execute-configuration-operation.md); the payload fields
+mirror the query result fields, so a queried dock pair is copied into the payload unchanged.
 
 | `name` | Payload | Does | Implementation basis |
 |---|---|---|---|
-| `changeGlobalParameter` | `{ key, type, value }` | changes a global parameter of the configuration | `setParameterOfRootComponent()` / `setParameterOfPlanObject()` (`roomle-configurator.ts:1578`, `:1443`) |
-| `changeComponentParameter` | `{ runtimeId, key, type, value }` | changes a component parameter | `setComponentParameter()` (`:2287`), `updateComponentParameter()` (`:2931`) |
-| `dockComponent` | `{ child: { componentId \| itemId \| configuration }, parentRuntimeId, parentDockId, childDockId, position?, insertInBetween? }` | creates the component and docks it at a queried position — no preview, no drag | kernel `loadPlainComponent` (RoomleCore `configurator.json:2887`) + `dockComponent` / `dockComponentWithPosition` (`typings/kernel.ts:824`, RoomleCore `configurator.json:3073`) — type, wrap, compose |
-| `deleteComponent` | `{ runtimeId, redockChildrenToParent }` | deletes the component; children re-docked to the parent or deleted with it | kernel `deleteComponent(planComponentId, redockChildrenToParent)` (`typings/kernel.ts:762`) — wrap |
-| `dragComponent` | `{ runtimeId, parentRuntimeId, parentDockId, childDockId, position? }` | moves an existing component to a queried position | `dockComponentWithPosition` (RoomleCore `configurator.json:3073`); `cancelDocking` aborts (`typings/kernel.ts:784`) |
+| `changeGlobalParameter` | `{ key, value }` | changes a global parameter of the configuration | kernel `setComponentParameter` on the root runtime id or `setPlanObjectParameter` on the plan object (`typings/kernel.ts:806`, `:828`), routed on `rootComponentParametersAsGlobal` — synchronous |
+| `changeComponentParameter` | `{ runtimeId, key, value }` | changes a component parameter | kernel `setComponentParameter` (`typings/kernel.ts:806`) — synchronous; key and type resolved from the component's current parameters |
+| `dockComponent` | `{ child: { componentId \| itemId \| configuration }, parentId, parentDockId, childDockId, position?, insertInBetween? }` | creates the component and docks it at a queried position — no preview, no drag | **new kernel API `dockNewComponent(targetObjectId, dockingEntity, dockPair)`** (embind, mirror of `getDockPairs`) — creates the component and docks it at the chosen pair with the collision test enabled, returns the new runtime id |
+| `deleteComponent` | `{ runtimeId, redockChildrenToParent }` | deletes the component; children re-docked to the parent or deleted with it | kernel `deleteComponent(planComponentId, redockChildrenToParent)` (`typings/kernel.ts:767`) behind the `isComponentDeletable` gate — wrap |
+| `dragComponent` | `{ runtimeId, parentId, parentDockId, childDockId, position?, insertInBetween? }` | moves an existing component to a queried position | kernel `dockComponent` (`typings/kernel.ts:840`) via the existing SDK wrapper (`configurator-kernel-access.ts:572`) |
 
 Also available through the operations: `loadConfiguration` (define a complete configuration from a
 JSON, `roomle-configurator.ts:1214`) and `undo` / `redo` (`:2318` / `:2327`, already MCP tools).
@@ -167,12 +172,16 @@ tool. Where a typed method already fits, the implementation behind the generic A
   `DockPairPreviewArray` DTO without constructing a preview, drawing points or lines, or changing
   configuration, selection or history. The transient docking component for a possible child is
   created through the same path as the preview flow and removed after the evaluation.
-- Proposed for the execute half: `loadPlainComponent` passes no dock target (parentId 0); either
-  expose `loadComponentAndDockNewPlanComponents` with a parent/dock pair, or compose it with
-  `dockComponent` in the SDK — the component is briefly free-flying between the two calls.
+- Planned for the execute half: one new clean embind API `dockNewComponent(targetObjectId,
+  dockingEntity, dockPair)` — the mirror of `getDockPairs` — creates the component through the
+  transient-entity creation path (without suppression) and docks it at the chosen pair through
+  `DockHelper::dockPlanComponent` with the collision test enabled. It replaces the earlier sketch
+  of composing the deprecated `loadPlainComponent` + `dockComponent`, which the binding
+  implementation requirements forbid.
 - `determinePlanComponentsThatWillBeDeleted` is typed and wrapped in the SDK for the `deleteImpact`
-  query; `dockComponentWithPosition` and `loadPlainComponent` are still exposed by the kernel but
-  missing from roomle-ui's `typings/kernel.ts` — type them with the execute half.
+  query; `dockComponent` and `deleteComponent` are already typed. The execute half types only the
+  new `dockNewComponent` and its dock-pair payload; `dockComponentWithPosition` stays untyped (not
+  needed) and `loadPlainComponent` stays untyped (deprecated).
 
 **Simplified docking for the agent.** Docking by dock ids and positions is the UI-level primitive;
 the agent needs a simpler relation-based docking, as the HI MCP server provides with its group
@@ -189,13 +198,13 @@ The full analysis of the two generic APIs:
 roomle-ui:
 
 - `configurator-core/src/roomle-configurator.ts` — the query method (thin, typed); the operation
-  method remains to be added with the execute half
+  method is planned with the execute half
 - `common-core/src/mcp-api/` — the dynamically imported query implementation and its types
   (`configuration-operations.ts`, `configuration-operations-types.ts`); the operation implementation
-  remains to be added
+  is planned with the execute half, in the same module
 - `packages/web-sdk/packages/typings/kernel.ts` — `getDockPairs` and
-  `determinePlanComponentsThatWillBeDeleted` typed; `dockComponentWithPosition` and
-  `loadPlainComponent` remain to be typed with the execute half
+  `determinePlanComponentsThatWillBeDeleted` typed; the execute half adds `dockNewComponent` and its
+  dock-pair payload type
 - tests under `packages/web-sdk/packages/*/__tests__/` and `tests/unit/`
 - `packages/embedding-lib/docs/` — the contract document for the query API
   (`configuration-operations.md`); the operation API needs its half of the document
@@ -205,13 +214,14 @@ RoomleCore:
 - the pure dock-pair query `getDockPairs` (implemented; the computation lives in
   `src/configurator/internal/docking/dock-preview.cpp` and runs today only when a preview is
   constructed) with Catch2 tests in `test/configurator/internal/docking/dock-pair-query-test.cpp`
-- possibly `loadComponentAndDockNewPlanComponents` with a dock target, if composing
-  `loadPlainComponent` + `dockComponent` proves insufficient (execute half)
+- the planned `dockNewComponent` embind API (execute half) with Catch2 tests in
+  `test/configurator/internal/docking/dock-new-component-test.cpp`
 
 roomle-configurator-mcp:
 
 - `configurator-mcp/configurator-mcp-server/configurator-api.ts` and `tool-executors.ts` — the
-  eight read tools for the query catalog above
+  eight read tools for the query catalog above and, with the execute half, one write tool per
+  operation row
 - `minimal-configurator-example/index.html` — the page allow-list (`undo`, `redo`,
   `getConfiguratorCapabilities`, `queryConfigurationOperation`; the restriction to the two generic
   method names happens with the execute half)
@@ -224,7 +234,7 @@ roomle-configurator-mcp:
 ## Verification
 
 - web-sdk unit tests for every implemented query, including the pure dock-pair read (done); the
-  create-and-dock composition belongs to the execute half
+  execute operations join the suite with the execute half
 - MCP tool tests against the fake page socket (`configurator-mcp/configurator-mcp-server/tests/`)
   and the chat recovery tests (`configurator-mcp/configurator-mcp-chat/tests/`)
 - a live Chromium run against a local UI and MCP with `usm:frame`, as for the capabilities tool:
