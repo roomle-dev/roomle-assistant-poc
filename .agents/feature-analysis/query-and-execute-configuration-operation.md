@@ -8,8 +8,12 @@
 >
 > **Author:** AI Assistant
 >
-> **Status:** Open — the query half is implemented (RoomleCore `getDockPairs`, roomle-ui
-> `queryConfigurationOperation`, the eight MCP read tools); the execute half is planned below
+> **Status:** Implemented — both halves are built: RoomleCore `getDockPairs` and `dockNewComponent`,
+> roomle-ui `queryConfigurationOperation` and `executeConfigurationOperation`, the eight MCP read
+> tools, the six MCP write tools, and `undo` and `redo` rerouted through the execute API. The
+> durable outcome is promoted into the living reference (the wiki, the server reference, the skill,
+> the embedder contract in roomle-ui); this document is retained until the work lands on the
+> default branches
 >
 > **Scope:** the two generic roomle-ui APIs the MCP server's tools are built on
 

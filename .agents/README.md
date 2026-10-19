@@ -102,7 +102,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
-| [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Open — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-18 |
+| [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-19 |
 
 ### Refactoring Analyses
 
