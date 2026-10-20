@@ -63,7 +63,7 @@ each feature works today. The index is [the feature index](context/README.md).
 
 | Feature | Covers |
 |---|---|
-| [The configurator example with the AI Planning Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server with `undo` and `redo`, the launcher |
+| [The configurator example with the AI Planning Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server and the table of its tools, the launcher |
 | [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
 
 ### Wiki

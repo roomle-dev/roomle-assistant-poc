@@ -72,7 +72,9 @@ MCP server (configurator-mcp-server, :3100) ──┘
    needs to know when to use it; give it a label in `TOOL_LABELS` (`chat-recovery.ts`).
 5. Add tests in `configurator-mcp-server/tests/` (executor, registration) and, for a page method,
    extend `configurator-api.test.ts`.
-6. Update [`docs/configurator-mcp-server.md`](../../docs/configurator-mcp-server.md) and this skill.
+6. Update [`docs/configurator-mcp-server.md`](../../docs/configurator-mcp-server.md), the tool
+   table of [the chat context document](../context/configurator-example-with-planning-assistant-chat.md#the-mcp-server-the-tools)
+   and this skill.
 
 ## Tests
 

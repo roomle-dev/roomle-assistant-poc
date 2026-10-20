@@ -500,7 +500,7 @@ while the example page is open.
 3. A configurator method the page does not expose yet: add it to `configurator-api.ts` and to `CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html` — a public method of roomle-ui's `RoomleConfigurator`
 4. Name the tool in the server's instructions and the chat's system prompt when the agent needs to know when to use it
 5. Add or extend the unit tests in the matching `tests/` folder
-6. Update `docs/configurator-mcp-server.md` and `.agents/skills/configurator-mcp-server.md`
+6. Update `docs/configurator-mcp-server.md`, the tool table in `.agents/context/configurator-example-with-planning-assistant-chat.md` and `.agents/skills/configurator-mcp-server.md`
 
 Details: [`.agents/skills/configurator-mcp-server.md`](./.agents/skills/configurator-mcp-server.md).
 
