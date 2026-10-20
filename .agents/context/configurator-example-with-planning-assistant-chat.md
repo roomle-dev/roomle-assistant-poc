@@ -91,9 +91,32 @@ item or configuration of the `id` URL parameter (default `usm:frame`).
 
 The server (`configurator-mcp/configurator-mcp-server`) registers its tools on two generic SDK
 methods: every read tool relays one `queryConfigurationOperation(type, payload)` call, and every
-write tool — `change-component-parameter`, `change-global-parameter`, `dock-component`,
-`drag-component`, `delete-component`, `load-configuration`, plus `undo` and `redo` — relays one
-`executeConfigurationOperation(name, payload)` call. Every write is one step of the configurator's
+write tool, `undo` and `redo` included, relays one `executeConfigurationOperation(name, payload)`
+call. The registrations are in `configurator-mcp-server.ts`; the payload shapes are
+`configurationQueryInputSchemas` and `configurationOperationInputSchemas` in `tool-executors.ts`.
+
+| Tool | Kind | Relays | Reads or does |
+|---|---|---|---|
+| `get-configurator-capabilities` | read | `queryConfigurationOperation('capabilities')` | The product options: configuration, recursive component and item alternatives, declared and current parameters, material metadata, docking choices; `include` selects sections |
+| `get-configuration` | read | `queryConfigurationOperation('configuration')` | The current configuration JSON and its hash |
+| `get-component-parameters` | read | `queryConfigurationOperation('componentParameters')` | The parameters and parameter groups of one component, by runtime id |
+| `get-global-parameters` | read | `queryConfigurationOperation('globalParameters')` | The global parameters, of the plan object or the root component |
+| `get-possible-children` | read | `queryConfigurationOperation('possibleChildren')` | The possible children of the configuration or of one component, with their tags and the default child |
+| `get-docking-positions` | read | `queryConfigurationOperation('dockingPositions')` | The dock pairs a possible child can be docked at, without drawing previews; `allowInsertInBetween` adds insert positions |
+| `get-component-docking-positions` | read | `queryConfigurationOperation('componentDockingPositions')` | The dock pairs an existing component can be moved to |
+| `get-delete-impact` | read | `queryConfigurationOperation('deleteImpact')` | Whether a component can be deleted and which components are deleted with it, with re-dock enabled or disabled |
+| `change-component-parameter` | write | `executeConfigurationOperation('changeComponentParameter')` | Changes a parameter of one component |
+| `change-global-parameter` | write | `executeConfigurationOperation('changeGlobalParameter')` | Changes a global parameter |
+| `dock-component` | write | `executeConfigurationOperation('dockComponent')` | Creates a component and docks it at a dock pair; returns the new runtime id |
+| `drag-component` | write | `executeConfigurationOperation('dragComponent')` | Moves an existing component to a dock pair |
+| `delete-component` | destructive write | `executeConfigurationOperation('deleteComponent')` | Deletes one component, its children re-docked to the parent or deleted with it |
+| `load-configuration` | destructive write | `executeConfigurationOperation('loadConfiguration')` | Replaces the configuration with an assembly configuration |
+| `undo` | history step | `executeConfigurationOperation('undo')` | Reverts the last change, as the configurator's undo button does |
+| `redo` | history step | `executeConfigurationOperation('redo')` | Brings back the change the last undo reverted |
+
+The kind is the tool's annotation: a read is read-only, non-destructive and idempotent; a write is
+neither; a destructive write adds `destructiveHint: true`; `undo` and `redo` carry no
+annotations. Every write is one step of the configurator's
 own history — the same history the user's undo button uses — confirmed by its own history event: the
 event confirms the oldest write still waiting, so the late event of a timed-out write cannot confirm
 the write after it. The server keeps the history state from the page's
