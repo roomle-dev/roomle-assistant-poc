@@ -115,8 +115,8 @@ call. The registrations are in `configurator-mcp-server.ts`; the payload shapes 
 | `redo` | history step | `executeConfigurationOperation('redo')` | Brings back the change the last undo reverted |
 
 The kind is the tool's annotation: a read is read-only, non-destructive and idempotent; a write is
-neither; a destructive write adds `destructiveHint: true`; `undo` and `redo` carry no
-annotations. Every write is one step of the configurator's
+non-destructive but neither read-only nor idempotent; a destructive write sets
+`destructiveHint: true`; `undo` and `redo` carry no annotations. Every write is one step of the configurator's
 own history — the same history the user's undo button uses — confirmed by its own history event: the
 event confirms the oldest write still waiting, so the late event of a timed-out write cannot confirm
 the write after it. The server keeps the history state from the page's
