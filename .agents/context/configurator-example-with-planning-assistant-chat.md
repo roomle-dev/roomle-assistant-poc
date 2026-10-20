@@ -94,8 +94,9 @@ methods: every read tool relays one `queryConfigurationOperation(type, payload)`
 write tool — `change-component-parameter`, `change-global-parameter`, `dock-component`,
 `drag-component`, `delete-component`, `load-configuration`, plus `undo` and `redo` — relays one
 `executeConfigurationOperation(name, payload)` call. Every write is one step of the configurator's
-own history — the same history the user's undo button uses — confirmed by the history event the
-configurator fires before its call returns. The server keeps the history state from the page's
+own history — the same history the user's undo button uses — confirmed by its own history event: the
+event confirms the oldest write still waiting, so the late event of a timed-out write cannot confirm
+the write after it. The server keeps the history state from the page's
 events and answers "nothing to undo" / "nothing to redo" without calling the configurator when the
 reported state rules the step out; a write without an event within 1 s is reported as not confirmed
 (`confirmed: false` with a hint). Writes run one at a time. The tool results carry `canUndo` and

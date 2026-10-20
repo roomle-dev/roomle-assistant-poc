@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import { DEFAULT_CALL_TIMEOUT_MS, PageBridge } from '../page-bridge';
+import {
+  ConfiguratorCallTimedOutError,
+  DEFAULT_CALL_TIMEOUT_MS,
+  PageBridge,
+} from '../page-bridge';
 import { BRIDGE_PROTOCOL } from '../types';
 import { attachPage, FakePageSocket, historyEvent } from './fake-page-socket';
 
@@ -195,6 +199,9 @@ describe('PageBridge.call', () => {
       vi.advanceTimersByTime(500);
       await expect(promise).rejects.toThrow(
         "Configurator call 'undo' timed out after 500ms"
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        ConfiguratorCallTimedOutError
       );
     } finally {
       vi.useRealTimers();

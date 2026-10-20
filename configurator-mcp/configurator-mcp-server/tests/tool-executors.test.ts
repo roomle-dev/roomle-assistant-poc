@@ -8,7 +8,7 @@ import type {
 } from '../configurator-api';
 import { createConfiguratorApi } from '../configurator-api';
 import { connectHistoryState, HistoryState } from '../history-state';
-import { PageBridge } from '../page-bridge';
+import { ConfiguratorCallTimedOutError, PageBridge } from '../page-bridge';
 import {
   HISTORY_EVENT_WAIT_MS,
   runConfigurationOperationQuery,
@@ -50,7 +50,7 @@ describe('readConfiguratorCapabilities', () => {
   it('reads complete or partial capabilities through the query API without waiting for a history event', async () => {
     const history = new HistoryState();
     const api = createConfigurator(history);
-    const events = vi.spyOn(history, 'waitForEvents');
+    const operations = vi.spyOn(history, 'waitForOperation');
     const query = vi.mocked(api.extended.queryConfigurationOperation);
     for (const complete of [true, false]) {
       const capabilities = {
@@ -66,7 +66,7 @@ describe('readConfiguratorCapabilities', () => {
         capabilities
       );
     }
-    expect(events).not.toHaveBeenCalled();
+    expect(operations).not.toHaveBeenCalled();
     expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
     expect(query).toHaveBeenNthCalledWith(1, 'capabilities', {
       include: ['materials'],
@@ -127,7 +127,7 @@ describe('runConfigurationOperationQuery', () => {
     async (type, payload, expected) => {
       const history = new HistoryState();
       const api = createConfigurator(history);
-      const events = vi.spyOn(history, 'waitForEvents');
+      const operations = vi.spyOn(history, 'waitForOperation');
       const result = { type, context: {}, dockPairs: [] };
       vi.mocked(api.extended.queryConfigurationOperation).mockResolvedValueOnce(
         result
@@ -139,7 +139,7 @@ describe('runConfigurationOperationQuery', () => {
       expect(
         api.extended.queryConfigurationOperation
       ).toHaveBeenCalledExactlyOnceWith(type, expected);
-      expect(events).not.toHaveBeenCalled();
+      expect(operations).not.toHaveBeenCalled();
       expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
     }
   );
@@ -415,7 +415,7 @@ describe('runConfigurationOperationWrite', () => {
     async (name, payload, expected) => {
       const history = new HistoryState();
       const api = createConfigurator(history);
-      const events = vi.spyOn(history, 'waitForEvents');
+      const operations = vi.spyOn(history, 'waitForOperation');
       const execute = vi.mocked(api.extended.executeConfigurationOperation);
 
       await expect(
@@ -429,7 +429,10 @@ describe('runConfigurationOperationWrite', () => {
         canRedo: false,
       });
       expect(execute).toHaveBeenCalledExactlyOnceWith(name, expected);
-      expect(events).toHaveBeenCalledExactlyOnceWith(1, HISTORY_EVENT_WAIT_MS);
+      expect(operations).toHaveBeenCalledExactlyOnceWith(
+        1,
+        HISTORY_EVENT_WAIT_MS
+      );
     }
   );
 
@@ -594,6 +597,133 @@ describe('runConfigurationOperationWrite', () => {
       'deleteComponent started',
       'delete done',
     ]);
+  });
+
+  it('does not confirm a write with the late history event of a timed-out write', async () => {
+    vi.useFakeTimers();
+    const history = new HistoryState();
+    let timeOutDock = () => {};
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          (name: ConfigurationOperationName) => {
+            if (name === 'dockComponent') {
+              // The page received the write but answers too late; the
+              // operation still lands and reports its history event later.
+              return new Promise((_, reject) => {
+                timeOutDock = () =>
+                  reject(
+                    new ConfiguratorCallTimedOutError(
+                      'executeConfigurationOperation',
+                      30_000
+                    )
+                  );
+              });
+            }
+            // The second write's page call resolves without a history event.
+            return Promise.resolve({
+              type: name,
+              context: {},
+              configurationHash: 'after',
+            });
+          }
+        ),
+      },
+    };
+
+    const timedOut = runConfigurationOperationWrite(
+      api,
+      history,
+      'dockComponent',
+      { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 }
+    );
+    const second = runConfigurationOperationWrite(
+      api,
+      history,
+      'deleteComponent',
+      { runtimeId: 7, redockChildrenToParent: true }
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    timeOutDock();
+    await expect(timedOut).rejects.toThrow(/timed out/);
+    await vi.advanceTimersByTimeAsync(0);
+    // The timed-out write's history event arrives while the second write waits.
+    history.changed(true, false);
+    await vi.advanceTimersByTimeAsync(HISTORY_EVENT_WAIT_MS);
+
+    await expect(second).resolves.toMatchObject({
+      confirmed: false,
+      hint: 'The configurator did not report the change - the configuration may be unchanged.',
+    });
+  });
+
+  it('confirms the write after a failed page call by its own history event', async () => {
+    const history = new HistoryState();
+    let fail = true;
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          async (name: ConfigurationOperationName) => {
+            if (fail) {
+              throw new Error('No configurator page connected.');
+            }
+            history.changed(true, false);
+            return { type: name, context: {}, configurationHash: 'after' };
+          }
+        ),
+      },
+    };
+
+    await expect(
+      runConfigurationOperationWrite(api, history, 'undo', {})
+    ).rejects.toThrow('No configurator page connected.');
+    fail = false;
+
+    await expect(
+      runConfigurationOperationWrite(api, history, 'deleteComponent', {
+        runtimeId: 7,
+        redockChildrenToParent: true,
+      })
+    ).resolves.toMatchObject({ confirmed: true });
+  });
+
+  it('confirms the write after an unconfirmed one by its own history event', async () => {
+    vi.useFakeTimers();
+    const history = new HistoryState();
+    const api: ConfiguratorApi = {
+      extended: {
+        queryConfigurationOperation: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          async (name: ConfigurationOperationName) => {
+            // The first write changes nothing and reports no history event.
+            if (name === 'changeComponentParameter') {
+              return { type: name, context: {}, configurationHash: 'same' };
+            }
+            history.changed(true, false);
+            return { type: name, context: {}, configurationHash: 'after' };
+          }
+        ),
+      },
+    };
+
+    const unchanged = runConfigurationOperationWrite(
+      api,
+      history,
+      'changeComponentParameter',
+      { runtimeId: 7, key: 'width', value: '120' }
+    );
+    await vi.advanceTimersByTimeAsync(HISTORY_EVENT_WAIT_MS);
+    await expect(unchanged).resolves.toMatchObject({ confirmed: false });
+
+    const write = runConfigurationOperationWrite(
+      api,
+      history,
+      'deleteComponent',
+      { runtimeId: 7, redockChildrenToParent: true }
+    );
+    await expect(write).resolves.toMatchObject({ confirmed: true });
   });
 
   it('reports a failed page call to the caller', async () => {

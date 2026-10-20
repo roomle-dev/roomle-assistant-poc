@@ -1,13 +1,16 @@
 import type { PageBridge } from './page-bridge';
 
 // The configurator's undo history as the page reports it: whether an undo and
-// a redo are possible, from the last history event, and the number of events.
-// Until a page reports it, the state is unknown.
+// a redo are possible, from the last history event. Until a page reports it,
+// the state is unknown. A history event also confirms the oldest operation
+// the server sent that is still waiting, so the late event of a timed-out
+// operation cannot confirm the operation after it.
 export class HistoryState {
   private _reported = false;
   private _canUndo = false;
   private _canRedo = false;
-  private _events = 0;
+  private _sentOperations = 0;
+  private _confirmedOperations = 0;
   private _waiters = new Set<() => void>();
 
   public get reported(): boolean {
@@ -22,15 +25,13 @@ export class HistoryState {
     return this._canRedo;
   }
 
-  public get events(): number {
-    return this._events;
-  }
-
   public changed(undo: boolean, redo: boolean): void {
     this._reported = true;
     this._canUndo = undo;
     this._canRedo = redo;
-    this._events += 1;
+    if (this._confirmedOperations < this._sentOperations) {
+      this._confirmedOperations += 1;
+    }
     for (const wake of this._waiters) {
       wake();
     }
@@ -41,11 +42,27 @@ export class HistoryState {
     this._reported = false;
     this._canUndo = false;
     this._canRedo = false;
+    this._sentOperations = 0;
+    this._confirmedOperations = 0;
   }
 
-  /** Resolves true once `count` events have arrived, false after the timeout. */
-  public waitForEvents(count: number, timeoutMs: number): Promise<boolean> {
-    if (this._events >= count) {
+  /** Registers an operation sent to the page and returns its serial. */
+  public operationSent(): number {
+    this._sentOperations += 1;
+    return this._sentOperations;
+  }
+
+  /** The operation will not be confirmed by a history event; its slot is released. */
+  public operationFailed(): void {
+    this._sentOperations = Math.max(
+      this._confirmedOperations,
+      this._sentOperations - 1
+    );
+  }
+
+  /** Resolves true once the operation with the serial is confirmed, false after the timeout. */
+  public waitForOperation(serial: number, timeoutMs: number): Promise<boolean> {
+    if (this._confirmedOperations >= serial) {
       return Promise.resolve(true);
     }
     return new Promise((resolve) => {
@@ -55,7 +72,7 @@ export class HistoryState {
         resolve(reached);
       };
       const wake = () => {
-        if (this._events >= count) {
+        if (this._confirmedOperations >= serial) {
           finish(true);
         }
       };

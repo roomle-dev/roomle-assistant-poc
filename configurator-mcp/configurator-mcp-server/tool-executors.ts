@@ -9,6 +9,7 @@ import {
   type ConfigurationOperationQueryType,
 } from './configurator-api';
 import type { HistoryState } from './history-state';
+import { ConfiguratorCallTimedOutError } from './page-bridge';
 
 export type HistoryDirection = 'undo' | 'redo';
 
@@ -137,14 +138,48 @@ export interface HistoryStepResult {
   hint?: string;
 }
 
-// One undo or redo at a time: each is confirmed by the next history event, so
-// two at once would take each other's event.
+// One operation at a time: each is confirmed by its own history event, so two
+// at once would take each other's event.
 let historySteps: Promise<unknown> = Promise.resolve();
 
 const oneAtATime = <T>(run: () => Promise<T>): Promise<T> => {
   const next = historySteps.then(run);
   historySteps = next.catch(() => undefined);
   return next;
+};
+
+// One executeConfigurationOperation call, confirmed by the history event it
+// causes: the event of an earlier timed-out operation arrives late and is
+// consumed by that operation's slot, so it cannot confirm this one. A call
+// that fails without a timeout, or reports no event in time, releases its
+// slot, so its possible late event cannot confirm the next operation either.
+const runConfirmedOperation = async (
+  api: ConfiguratorApi,
+  history: HistoryState,
+  name: ConfigurationOperationName,
+  payload?: ConfigurationOperationPayload
+): Promise<{ result: unknown; confirmed: boolean }> => {
+  const serial = history.operationSent();
+  let result: unknown;
+  try {
+    result =
+      payload === undefined
+        ? await api.extended.executeConfigurationOperation(name)
+        : await api.extended.executeConfigurationOperation(name, payload);
+  } catch (error) {
+    if (!(error instanceof ConfiguratorCallTimedOutError)) {
+      history.operationFailed();
+    }
+    throw error;
+  }
+  const confirmed = await history.waitForOperation(
+    serial,
+    HISTORY_EVENT_WAIT_MS
+  );
+  if (!confirmed) {
+    history.operationFailed();
+  }
+  return { result, confirmed };
 };
 
 /** One step of the configurator's undo history, as the configurator's own undo and redo buttons take it. */
@@ -165,11 +200,10 @@ export const runHistoryStep = (
     if (history.reported && !possible) {
       return { [done]: false, ...state(), hint: NOTHING_TO[direction] };
     }
-    const eventsBefore = history.events;
-    await configuratorApi.extended.executeConfigurationOperation(direction);
-    const confirmed = await history.waitForEvents(
-      eventsBefore + 1,
-      HISTORY_EVENT_WAIT_MS
+    const { confirmed } = await runConfirmedOperation(
+      configuratorApi,
+      history,
+      direction
     );
     return {
       [done]: confirmed,
@@ -196,14 +230,11 @@ export const runConfigurationOperationWrite = (
     const parsed = z
       .object(configurationOperationInputSchemas[name])
       .parse(payload ?? {});
-    const eventsBefore = history.events;
-    const result = await api.extended.executeConfigurationOperation(
+    const { result, confirmed } = await runConfirmedOperation(
+      api,
+      history,
       name,
       parsed
-    );
-    const confirmed = await history.waitForEvents(
-      eventsBefore + 1,
-      HISTORY_EVENT_WAIT_MS
     );
     return {
       ...(result as Record<string, unknown>),

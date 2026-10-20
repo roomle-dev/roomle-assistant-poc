@@ -126,11 +126,12 @@ The six write tools each relay one `executeConfigurationOperation(name, payload)
 tool's name fixes the operation, its arguments are the payload, validated before the page call. The payload
 shapes are not strict: the keys a query result carries but the operation does not take (a dock pair's
 `childDockId`, `lineSegments` or `displacedComponents`) are stripped, so a queried dock pair pastes
-unchanged. Every write lands one step in the undo history and runs one at a time, beside no other change.
-The result carries the SDK's JSON plus `confirmed` — whether the configurator reported the change with a
-history event —, `canUndo` and `canRedo`, and a `hint` when the page sent no event within 1 s. A failed
-configurator call — no page, a lost page, a timeout, an invalid dock pair, a refused parameter — is a tool
-error with the message.
+unchanged. Every write lands one step in the undo history and runs one at a time, beside no other change;
+its confirmation is correlated with its own history event, so the late event of a timed-out write cannot
+confirm the next write. The result carries the SDK's JSON plus `confirmed` — whether the configurator
+reported the change with a history event —, `canUndo` and `canRedo`, and a `hint` when the page sent no
+event within 1 s. A failed configurator call — no page, a lost page, a timeout, an invalid dock pair, a
+refused parameter — is a tool error with the message.
 
 The eight read tools each relay one `queryConfigurationOperation(type, payload)` call on the page — the
 tool's name fixes the type, its arguments are the payload, validated before the page call — and return

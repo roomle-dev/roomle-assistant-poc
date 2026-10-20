@@ -4,6 +4,15 @@ import { BRIDGE_PROTOCOL, CONFIGURATOR_MCP_PORT } from './types';
 
 export const DEFAULT_CALL_TIMEOUT_MS = 30_000;
 
+// The page did not answer a call in time. It may still execute the call and
+// report its history event later, so the caller keeps the operation open.
+export class ConfiguratorCallTimedOutError extends Error {
+  public constructor(method: string, timeoutMs: number) {
+    super(`Configurator call '${method}' timed out after ${timeoutMs}ms`);
+    this.name = 'ConfiguratorCallTimedOutError';
+  }
+}
+
 interface PendingCall {
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
@@ -161,11 +170,7 @@ export class PageBridge {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this._pendingCalls.delete(id);
-        reject(
-          new Error(
-            `Configurator call '${method}' timed out after ${timeoutMs}ms`
-          )
-        );
+        reject(new ConfiguratorCallTimedOutError(method, timeoutMs));
       }, timeoutMs);
       this._pendingCalls.set(id, { resolve, reject, timeout });
       page.send(JSON.stringify(call));
