@@ -78,7 +78,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 roomle-configurator-mcp is a demonstration and development environment for:
 
 1. **Minimal Configurator Example** — A standalone HTML page (`minimal-configurator-example/index.html`) that initialises a default Roomle configurator with the embedding-lib, served by the launcher `minimal-configurator-example/start.mjs`
-2. **Configurator MCP Server** — The TypeScript MCP server (`configurator-mcp/configurator-mcp-server`) that lets AI agents change a Roomle configuration in a live configurator session. Its tools call the `RoomleConfigurator` API through the page; they are `get-configurator-capabilities`, `undo` and `redo`
+2. **Configurator MCP Server** — The TypeScript MCP server (`configurator-mcp/configurator-mcp-server`) that lets AI agents change a Roomle configuration in a live configurator session. Its tools call the `RoomleConfigurator` API through the page: eight reads of the configuration and its product options, six writes, and `undo` and `redo`
 3. **AI Chat** — The chat backend (`configurator-mcp/configurator-mcp-chat`, Vercel AI SDK, the Mistral models `mistral-medium-latest` and `mistral-large-latest`) behind roomle-ui's AI Planning Assistant window in the configurator; an MCP client of the server
 
 The pattern for this repository is [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example): the HI MCP server there plans HOMAG Intelligence object groups in a live Roomle room-planner session, from two JSON files (master data and the articles of a library) that describe every configuration option. A Roomle configurator has no such single data set:
@@ -108,10 +108,10 @@ The start script (`npm start`) provides:
 │   ├── package.json                # Workspace root: start/test/typecheck scripts
 │   ├── tsconfig.base.json          # Strict ES2022 compiler options for Node
 │   ├── vitest.config.ts            # Unit tests of both packages
-│   ├── configurator-mcp-server/    # The MCP server: /mcp + /bridge on :3100, capabilities, undo and redo tools
+│   ├── configurator-mcp-server/    # The MCP server: /mcp + /bridge on :3100, the read and write tools, undo and redo
 │   │   ├── server.ts               # Entry point
 │   │   ├── configurator-mcp-server.ts # McpServer: instructions, tool registrations
-│   │   ├── tool-executors.ts       # Capabilities reads and confirmed history steps
+│   │   ├── tool-executors.ts       # The read and write executors, confirmed history steps
 │   │   ├── history-state.ts        # The configurator's undo history state from the page's events
 │   │   ├── configurator-api.ts     # The configurator methods the tools call, relayed to the page
 │   │   ├── page-bridge.ts          # Connected page, call correlation, timeouts
@@ -209,7 +209,7 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 5. **The chat is an MCP client beside the server** — `configurator-mcp-chat` holds the Mistral key and the system prompt and connects to `/mcp` per turn; the page keeps the conversation and feeds the AI Planning Assistant window through `onPlanningAssistantPrompt` and `planningAssistantOutput` of the configurator (roomle-ui)
 6. **Local only** — every process runs on localhost; nothing is deployed
 
-The SDK owns capability discovery: component definitions, item presets, declared and current parameter choices, material metadata and docking constraints. The MCP server relays the SDK result. Calculating docking placements and adding editing tools remain separate work.
+The SDK owns capability discovery: component definitions, item presets, declared and current parameter choices, material metadata and docking constraints, and it calculates the docking placements (the kernel's `getDockPairs`) and performs the editing operations (`executeConfigurationOperation`). The MCP server relays the SDK result and confirms every write with the configurator's history event.
 
 ## Hard Rules
 

@@ -159,3 +159,74 @@ describe('configuration query read recovery', () => {
     }
   );
 });
+
+describe('configuration write recovery', () => {
+  it('summarizes a confirmed write with its confirmation and history state', async () => {
+    const execute = vi.fn(async () =>
+      result({
+        type: 'dockComponent',
+        context: { configurationHash: 'before' },
+        configurationHash: 'after',
+        runtimeId: 42,
+        confirmed: true,
+        canUndo: true,
+        canRedo: false,
+      })
+    );
+    const recovery = createChatRecovery({
+      'dock-component': fakeTool(execute),
+    });
+    await recovery.tools['dock-component'].execute!({}, options);
+    const summary = recovery.summary();
+    expect(summary).toContain('Completed Component dock');
+    expect(summary).toContain('confirmed: true');
+    expect(summary).toContain('canUndo: true');
+    expect(summary).toContain('canRedo: false');
+    expect(summary).not.toContain('Unconfirmed');
+    expect(summary).not.toContain('configurationHash');
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('describes an unconfirmed write with its hint instead of a completion', async () => {
+    const execute = vi.fn(async () =>
+      result({
+        type: 'deleteComponent',
+        context: {},
+        configurationHash: 'after',
+        confirmed: false,
+        canUndo: true,
+        canRedo: false,
+        hint: 'The configurator did not report the change - the configuration may be unchanged.',
+      })
+    );
+    const recovery = createChatRecovery({
+      'delete-component': fakeTool(execute),
+    });
+    await recovery.tools['delete-component'].execute!({}, options);
+    const summary = recovery.summary();
+    expect(summary).toContain('Unconfirmed Component deletion');
+    expect(summary).toContain('The configurator did not report the change');
+    expect(summary).toContain(
+      'Check the configuration before trying this operation again.'
+    );
+    expect(summary).not.toContain('Completed Component deletion');
+  });
+
+  it('keeps the wording of the undo and redo results without a confirmed key', async () => {
+    const recovery = createChatRecovery({
+      undo: fakeTool(async () =>
+        result({
+          undone: false,
+          canUndo: true,
+          canRedo: false,
+          hint: 'The configurator did not report the undo - the configuration may be unchanged.',
+        })
+      ),
+    });
+    await recovery.tools.undo.execute!({}, options);
+    const summary = recovery.summary();
+    expect(summary).toContain('Completed Undo: undone: false');
+    expect(summary).toContain('The configurator did not report the undo');
+    expect(summary).not.toContain('Unconfirmed Undo');
+  });
+});

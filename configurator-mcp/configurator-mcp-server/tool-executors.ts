@@ -3,10 +3,13 @@ import {
   CAPABILITY_SECTIONS,
   type ConfiguratorApi,
   type ConfiguratorCapabilitySection,
+  type ConfigurationOperationName,
+  type ConfigurationOperationPayload,
   type ConfigurationOperationQueryPayload,
   type ConfigurationOperationQueryType,
 } from './configurator-api';
 import type { HistoryState } from './history-state';
+import { ConfiguratorCallTimedOutError } from './page-bridge';
 
 export type HistoryDirection = 'undo' | 'redo';
 
@@ -18,6 +21,12 @@ const dockingChildSchema = z.union([
   z.strictObject({ itemId: z.string() }),
   z.strictObject({ configuration: z.string() }),
 ]);
+
+const positionSchema = z.strictObject({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+});
 
 export const configurationQueryInputSchemas: Record<
   ConfigurationOperationQueryType,
@@ -42,6 +51,45 @@ export const configurationQueryInputSchemas: Record<
     runtimeId: z.number(),
     redockChildrenToParent: z.boolean(),
   },
+};
+
+// The payload shapes of executeConfigurationOperation, one per operation. The
+// server registers the same shapes as each write tool's inputSchema; the
+// executor validates again before any page call. The shapes are not strict, so
+// a dock pair a get-docking-positions read returned pastes unchanged - the
+// keys the operation does not take are stripped before the page call.
+export const configurationOperationInputSchemas: Record<
+  ConfigurationOperationName,
+  z.ZodRawShape
+> = {
+  changeComponentParameter: {
+    runtimeId: z.number(),
+    key: z.string(),
+    value: z.string(),
+  },
+  changeGlobalParameter: { key: z.string(), value: z.string() },
+  dockComponent: {
+    child: dockingChildSchema,
+    parentId: z.number(),
+    parentDockId: z.number(),
+    position: positionSchema.optional(),
+    insertInBetween: z.boolean().optional(),
+  },
+  dragComponent: {
+    runtimeId: z.number(),
+    parentId: z.number(),
+    parentDockId: z.number(),
+    childDockId: z.number(),
+    position: positionSchema.optional(),
+    insertInBetween: z.boolean().optional(),
+  },
+  deleteComponent: {
+    runtimeId: z.number(),
+    redockChildrenToParent: z.boolean(),
+  },
+  loadConfiguration: { configuration: z.string() },
+  undo: {},
+  redo: {},
 };
 
 /** One read of the active configuration through queryConfigurationOperation; never enters the history queue. */
@@ -90,14 +138,48 @@ export interface HistoryStepResult {
   hint?: string;
 }
 
-// One undo or redo at a time: each is confirmed by the next history event, so
-// two at once would take each other's event.
+// One operation at a time: each is confirmed by its own history event, so two
+// at once would take each other's event.
 let historySteps: Promise<unknown> = Promise.resolve();
 
 const oneAtATime = <T>(run: () => Promise<T>): Promise<T> => {
   const next = historySteps.then(run);
   historySteps = next.catch(() => undefined);
   return next;
+};
+
+// One executeConfigurationOperation call, confirmed by the history event it
+// causes: the event of an earlier timed-out operation arrives late and is
+// consumed by that operation's slot, so it cannot confirm this one. A call
+// that fails without a timeout, or reports no event in time, releases its
+// slot, so its possible late event cannot confirm the next operation either.
+const runConfirmedOperation = async (
+  api: ConfiguratorApi,
+  history: HistoryState,
+  name: ConfigurationOperationName,
+  payload?: ConfigurationOperationPayload
+): Promise<{ result: unknown; confirmed: boolean }> => {
+  const serial = history.operationSent();
+  let result: unknown;
+  try {
+    result =
+      payload === undefined
+        ? await api.extended.executeConfigurationOperation(name)
+        : await api.extended.executeConfigurationOperation(name, payload);
+  } catch (error) {
+    if (!(error instanceof ConfiguratorCallTimedOutError)) {
+      history.operationFailed();
+    }
+    throw error;
+  }
+  const confirmed = await history.waitForOperation(
+    serial,
+    HISTORY_EVENT_WAIT_MS
+  );
+  if (!confirmed) {
+    history.operationFailed();
+  }
+  return { result, confirmed };
 };
 
 /** One step of the configurator's undo history, as the configurator's own undo and redo buttons take it. */
@@ -118,15 +200,47 @@ export const runHistoryStep = (
     if (history.reported && !possible) {
       return { [done]: false, ...state(), hint: NOTHING_TO[direction] };
     }
-    const eventsBefore = history.events;
-    await configuratorApi.extended[direction]();
-    const confirmed = await history.waitForEvents(
-      eventsBefore + 1,
-      HISTORY_EVENT_WAIT_MS
+    const { confirmed } = await runConfirmedOperation(
+      configuratorApi,
+      history,
+      direction
     );
     return {
       [done]: confirmed,
       ...state(),
       ...(!confirmed && { hint: NOT_CONFIRMED[direction] }),
+    };
+  });
+
+const NOT_CONFIRMED_WRITE =
+  'The configurator did not report the change - the configuration may be unchanged.';
+
+/**
+ * One write of the active configuration through executeConfigurationOperation.
+ * Every write lands one step in the undo history; the result reports the page's
+ * result plus the confirmation of that step and the history state after it.
+ */
+export const runConfigurationOperationWrite = (
+  api: ConfiguratorApi,
+  history: HistoryState,
+  name: ConfigurationOperationName,
+  payload?: ConfigurationOperationPayload
+): Promise<Record<string, unknown>> =>
+  oneAtATime(async () => {
+    const parsed = z
+      .object(configurationOperationInputSchemas[name])
+      .parse(payload ?? {});
+    const { result, confirmed } = await runConfirmedOperation(
+      api,
+      history,
+      name,
+      parsed
+    );
+    return {
+      ...(result as Record<string, unknown>),
+      confirmed,
+      canUndo: history.canUndo,
+      canRedo: history.canRedo,
+      ...(!confirmed && { hint: NOT_CONFIRMED_WRITE }),
     };
   });

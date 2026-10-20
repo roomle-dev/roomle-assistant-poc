@@ -4,6 +4,8 @@ import {
   CONFIGURATOR_METHODS,
   createConfiguratorApi,
   type ConfiguratorCapabilitySection,
+  type ConfigurationOperationName,
+  type ConfigurationOperationPayload,
   type ConfigurationOperationQueryPayload,
   type ConfigurationOperationQueryType,
 } from '../configurator-api';
@@ -32,7 +34,7 @@ describe('createConfiguratorApi', () => {
     | ConfiguratorCapabilitySection[]
     | undefined
   )[])(
-    'forwards capabilities include %j and preserves JSON and browser identity',
+    'forwards the capabilities query include %j and preserves JSON and browser identity',
     async (include) => {
       const result = {
         complete: false,
@@ -45,11 +47,16 @@ describe('createConfiguratorApi', () => {
         await createConfiguratorApi(
           bridge,
           'this-page'
-        ).extended.getConfiguratorCapabilities(include)
+        ).extended.queryConfigurationOperation(
+          'capabilities',
+          include === undefined ? undefined : { include }
+        )
       ).toBe(result);
       expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
-        'getConfiguratorCapabilities',
-        include === undefined ? [] : [include],
+        'queryConfigurationOperation',
+        include === undefined
+          ? ['capabilities']
+          : ['capabilities', { include }],
         undefined,
         'this-page'
       );
@@ -84,14 +91,36 @@ describe('createConfiguratorApi', () => {
     }
   );
 
-  it('forwards undo and redo without arguments and with the default timeout', async () => {
-    const bridge = createMockBridge();
-    const { extended } = createConfiguratorApi(bridge);
-    await expect(extended.undo()).resolves.toBeUndefined();
-    expect(bridge.call).toHaveBeenCalledWith('undo', []);
-    await expect(extended.redo()).resolves.toBeUndefined();
-    expect(bridge.call).toHaveBeenCalledWith('redo', []);
-  });
+  it.each([
+    [
+      'dockComponent',
+      { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+    ],
+    ['undo', undefined],
+    ['redo', undefined],
+  ] as [
+    ConfigurationOperationName,
+    ConfigurationOperationPayload | undefined,
+  ][])(
+    'forwards executeConfigurationOperation %s with payload %j and preserves JSON and browser identity',
+    async (name, payload) => {
+      const result = { type: name, context: {}, configurationHash: 'after' };
+      const bridge = createMockBridge();
+      vi.mocked(bridge.call).mockResolvedValue(result);
+      expect(
+        await createConfiguratorApi(
+          bridge,
+          'this-page'
+        ).extended.executeConfigurationOperation(name, payload)
+      ).toBe(result);
+      expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
+        'executeConfigurationOperation',
+        payload === undefined ? [name] : [name, payload],
+        undefined,
+        'this-page'
+      );
+    }
+  );
 
   it('calls exactly the configurator methods the page bridge exposes', () => {
     const { extended } = createConfiguratorApi(createMockBridge());
@@ -103,10 +132,13 @@ describe('createConfiguratorApi', () => {
 
   it('passes the browser identity to the calls', async () => {
     const bridge = createMockBridge();
-    await createConfiguratorApi(bridge, 'this-page').extended.undo();
+    await createConfiguratorApi(
+      bridge,
+      'this-page'
+    ).extended.executeConfigurationOperation('undo');
     expect(bridge.call).toHaveBeenCalledWith(
-      'undo',
-      [],
+      'executeConfigurationOperation',
+      ['undo'],
       undefined,
       'this-page'
     );

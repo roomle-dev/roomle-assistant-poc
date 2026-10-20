@@ -4,7 +4,8 @@ Standalone Roomle configurator example (one `minimal-configurator-example/index.
 Roomle configurator MCP server (`configurator-mcp`): an AI agent changes a Roomle configuration in a
 live standalone configurator session, the way the HI MCP server of
 [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example) plans HOMAG Intelligence
-object groups in a live room-planner session. The server offers `get-configurator-capabilities`, `undo` and `redo`; the example's AI
+object groups in a live room-planner session. The server offers eight reads of the configuration
+and its product options, six writes, and `undo` and `redo`; the example's AI
 Planning Assistant window talks to a Mistral model that calls them.
 
 ## Usage
@@ -30,9 +31,9 @@ loads another object, and every other URL parameter is an init option of the con
 [minimal-configurator-example/README.md](./minimal-configurator-example/README.md). The chat needs a
 Rubens UI whose configurator has the AI Planning Assistant window.
 
-Capabilities needs a Rubens UI with `getConfiguratorCapabilities`; an older UI returns an update message for this read. Use the local UI branch with `npm run dev` during development.
+The tools need a Rubens UI with `queryConfigurationOperation` and `executeConfigurationOperation`; an older UI returns an update message for the tool. Use the local UI branch with `npm run dev` during development.
 
-Ask the assistant in the window: "Which finishes are available?", `undo`, `redo`, "take back the last change". External MCP clients
+Ask the assistant in the window: "Which finishes are available?", "Make the shelf blue.", `undo`, `redo`, "take back the last change". External MCP clients
 connect to `http://localhost:3100/mcp`, e.g.
 `claude mcp add --transport http --scope user configurator-mcp http://localhost:3100/mcp`.
 Everything about the server, the tools and the chat: [docs/configurator-mcp-server.md](./docs/configurator-mcp-server.md).

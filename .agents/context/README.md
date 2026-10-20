@@ -13,5 +13,5 @@ Feature questions whose work has not landed keep their analysis in
 
 | Feature | Document | Covers |
 |---|---|---|
-| The configurator example with the AI Planning Assistant chat | [configurator-example-with-planning-assistant-chat.md](configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server with `undo` and `redo`, the launcher |
+| The configurator example with the AI Planning Assistant chat | [configurator-example-with-planning-assistant-chat.md](configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server with its read and write tools and `undo` and `redo`, the launcher |
 | Configurator capabilities for the configurator MCP | [get-configurator-capabilities.md](get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |

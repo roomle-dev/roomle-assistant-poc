@@ -43,11 +43,19 @@ MCP server (configurator-mcp-server, :3100) ──┘
 
 - `get-configurator-capabilities` forwards optional `include` (configuration, components, items, parameters, materials, docking) through `queryConfigurationOperation('capabilities', …)` and returns its JSON. Omitted/empty requests all sections.
 - The other seven read tools — `get-configuration`, `get-component-parameters`, `get-global-parameters`, `get-possible-children`, `get-docking-positions`, `get-component-docking-positions`, `get-delete-impact` — relay `queryConfigurationOperation` with their fixed query type; their payload shapes are `configurationQueryInputSchemas` in `tool-executors.ts`, validated with zod before any page call and registered as each tool's `inputSchema`.
-- Reads bypass the history queue and event wait. Preserve `clientId`, arguments, results and failures; keep undo/redo's void relay contract.
+- Reads bypass the history queue and event wait. Preserve `clientId`, arguments, results and failures.
 - The SDK owns discovery and validity, including the dock-pair calculation (the kernel's `getDockPairs`) and the delete impact. Its collectors are dynamically imported in roomle-ui; do not duplicate product interpretation in the MCP server. Declared alternatives can be inactive, current choices are kernel results, and `complete: false` / `unresolved` stay successful partial reads.
 - Every read tool is annotated read-only, non-destructive, idempotent and open-world because catalog metadata may be requested. Log operation summaries, never the full payload.
-- An older UI without `queryConfigurationOperation` receives an update message from the page. The protocol stays at version 2 and the bridge deadline stays at 30 seconds.
+- An older UI without `queryConfigurationOperation` or `executeConfigurationOperation` receives an update message from the page. The protocol stays at version 2 and the bridge deadline stays at 30 seconds.
 - Both server instructions and the chat prompt permit product inspection. Chat recovery describes failed/pending reads as incomplete, never as unconfirmed modifications; it omits read payloads and preserves outcomes of undo/redo in mixed turns.
+
+## Configuration writes
+
+- The six write tools — `change-component-parameter`, `change-global-parameter`, `dock-component`, `drag-component`, `delete-component`, `load-configuration` — relay `executeConfigurationOperation` with their fixed operation name; their payload shapes are `configurationOperationInputSchemas` in `tool-executors.ts`, validated with zod before any page call and registered as each tool's `inputSchema`. The shapes are not strict, so a dock pair a `get-docking-positions` read returned pastes unchanged; the keys the operation does not take are stripped.
+- Every write runs through `runConfigurationOperationWrite` and the shared `oneAtATime` queue: one change at a time, each confirmed by its own history event (at most `HISTORY_EVENT_WAIT_MS`). The confirmation is correlated with the operation (`HistoryState.operationSent` / `waitForOperation`): the late history event of a timed-out write is consumed by that write's slot and cannot confirm the next one. The result is the SDK's JSON plus `confirmed`, `canUndo` and `canRedo`, and a `hint` when the page sent no event in time. A failed page call is a tool error.
+- `undo` and `redo` keep their tools and their `{ undone | redone, canUndo, canRedo, hint? }` contract, relayed as `executeConfigurationOperation('undo' | 'redo')` through `runHistoryStep`; the nothing-to-undo short-circuit stays.
+- Write tools are annotated `readOnlyHint: false`, `idempotentHint: false`, `openWorldHint: true`; `delete-component` and `load-configuration` add `destructiveHint: true`. `undo` and `redo` carry no annotations.
+- Chat recovery distinguishes a confirmed write (`confirmed: true` — completed) from an unconfirmed one (`confirmed: false` — unconfirmed, with the hint); the undo/redo results carry no `confirmed` key and keep their wording.
 
 ## Adding a tool
 

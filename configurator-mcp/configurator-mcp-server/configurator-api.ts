@@ -2,12 +2,12 @@ import type { PageBridge } from './page-bridge';
 
 // The configurator methods the tools call. The connected page executes them on
 // instance.extended and no other - its allow-list in
-// minimal-configurator-example/index.html names the same methods.
+// minimal-configurator-example/index.html names the same methods. Every tool is
+// one generic operation API: the reads relay queryConfigurationOperation, the
+// writes (including undo and redo) relay executeConfigurationOperation.
 export const CONFIGURATOR_METHODS = [
-  'undo',
-  'redo',
-  'getConfiguratorCapabilities',
   'queryConfigurationOperation',
+  'executeConfigurationOperation',
 ] as const;
 export const CAPABILITY_SECTIONS = [
   'configuration',
@@ -49,16 +49,30 @@ export type ConfigurationOperationDockingChild =
 
 export type ConfigurationOperationQueryPayload = Record<string, unknown>;
 
+export const CONFIGURATION_OPERATION_NAMES = [
+  'changeComponentParameter',
+  'changeGlobalParameter',
+  'dockComponent',
+  'dragComponent',
+  'deleteComponent',
+  'loadConfiguration',
+  'undo',
+  'redo',
+] as const;
+export type ConfigurationOperationName =
+  (typeof CONFIGURATION_OPERATION_NAMES)[number];
+
+export type ConfigurationOperationPayload = Record<string, unknown>;
+
 export interface ConfiguratorApi {
   extended: {
-    undo(): Promise<void>;
-    redo(): Promise<void>;
-    getConfiguratorCapabilities(
-      include?: ConfiguratorCapabilitySection[]
-    ): Promise<unknown>;
     queryConfigurationOperation(
       type: ConfigurationOperationQueryType,
       payload?: ConfigurationOperationQueryPayload
+    ): Promise<unknown>;
+    executeConfigurationOperation(
+      name: ConfigurationOperationName,
+      payload?: ConfigurationOperationPayload
     ): Promise<unknown>;
   };
 }
@@ -76,21 +90,15 @@ export const createConfiguratorApi = (
       : bridge.call(method, args);
   return {
     extended: {
-      undo: async () => {
-        await call('undo', []);
-      },
-      redo: async () => {
-        await call('redo', []);
-      },
-      getConfiguratorCapabilities: (include) =>
-        call(
-          'getConfiguratorCapabilities',
-          include === undefined ? [] : [include]
-        ),
       queryConfigurationOperation: (type, payload) =>
         call(
           'queryConfigurationOperation',
           payload === undefined ? [type] : [type, payload]
+        ),
+      executeConfigurationOperation: (name, payload) =>
+        call(
+          'executeConfigurationOperation',
+          payload === undefined ? [name] : [name, payload]
         ),
     },
   };

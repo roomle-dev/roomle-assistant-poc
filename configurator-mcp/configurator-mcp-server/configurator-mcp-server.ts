@@ -3,13 +3,16 @@ import { z } from 'zod';
 import { CAPABILITY_SECTIONS } from './configurator-api';
 import type {
   ConfiguratorApi,
+  ConfigurationOperationName,
   ConfigurationOperationQueryType,
 } from './configurator-api';
 import type { HistoryState } from './history-state';
 import {
   type HistoryDirection,
+  configurationOperationInputSchemas,
   configurationQueryInputSchemas,
   runConfigurationOperationQuery,
+  runConfigurationOperationWrite,
   runHistoryStep,
   readConfiguratorCapabilities,
 } from './tool-executors';
@@ -22,9 +25,11 @@ export const INSTRUCTIONS =
   'options with get-configurator-capabilities. ' +
   'Declared alternatives may be conditional or inactive; use current kernel choices for what is available now. ' +
   'Acknowledge unresolved resources when complete is false; never invent missing options or docking placements. ' +
-  'Only undo and redo can change the configuration. undo reverts the last change of the configuration, as the ' +
-  "configurator's undo button does; redo brings back the change the last undo reverted. Nothing else of the " +
-  'configuration can be changed yet.';
+  'Change the configuration with change-component-parameter, change-global-parameter, dock-component, ' +
+  'drag-component, delete-component and load-configuration; every change lands one step in the undo history ' +
+  'and the tool result reports whether the change was confirmed, and whether a further undo or redo is ' +
+  "possible. undo reverts the last change of the configuration, as the configurator's undo button does; redo " +
+  'brings back the change the last undo reverted.';
 
 const UNDO_DESCRIPTION =
   "Reverts the last change of the configuration, as the configurator's undo button does; call it again to revert " +
@@ -45,6 +50,20 @@ const READ_ANNOTATIONS = {
   destructiveHint: false,
   idempotentHint: true,
   openWorldHint: true,
+} as const;
+
+const WRITE_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+} as const;
+
+// Deleting a component and loading a configuration replace parts of the
+// configuration that the undo history brings back step by step.
+const DESTRUCTIVE_WRITE_ANNOTATIONS = {
+  ...WRITE_ANNOTATIONS,
+  destructiveHint: true,
 } as const;
 
 // One read tool per queryConfigurationOperation query, except capabilities,
@@ -112,6 +131,80 @@ const CONFIGURATION_QUERY_TOOLS: {
   },
 ];
 
+// One write tool per executeConfigurationOperation operation, except undo and
+// redo, which keep their own registrations and their established result
+// contract. Every write lands one step in the undo history and reports whether
+// the configurator confirmed the change.
+const CONFIGURATION_OPERATION_TOOLS: {
+  name: string;
+  operation: ConfigurationOperationName;
+  description: string;
+  annotations: typeof WRITE_ANNOTATIONS | typeof DESTRUCTIVE_WRITE_ANNOTATIONS;
+}[] = [
+  {
+    name: 'change-component-parameter',
+    operation: 'changeComponentParameter',
+    description:
+      'Changes the parameter key of the component with the given runtime id to the given value; the key ' +
+      'must be one of the parameters get-component-parameters returned for the component. The change ' +
+      'lands one step in the undo history. Returns confirmed - whether the configurator reported the ' +
+      'change -, canUndo and canRedo, and a hint when the change was not confirmed.',
+    annotations: WRITE_ANNOTATIONS,
+  },
+  {
+    name: 'change-global-parameter',
+    operation: 'changeGlobalParameter',
+    description:
+      'Changes the global parameter key to the given value; the key must be one of the parameters ' +
+      'get-global-parameters returned. The change lands one step in the undo history. Returns confirmed ' +
+      '- whether the configurator reported the change -, canUndo and canRedo, and a hint when the ' +
+      'change was not confirmed.',
+    annotations: WRITE_ANNOTATIONS,
+  },
+  {
+    name: 'dock-component',
+    operation: 'dockComponent',
+    description:
+      'Docks a possible child at a dock pair of the configuration: the child as a component id, an item ' +
+      'id or an assembly configuration, the parent runtime id and dock id, and optionally the position ' +
+      'and whether to insert between. A dock pair a get-docking-positions read returned can be used ' +
+      'unchanged. The docked component lands one step in the undo history. Returns the new component ' +
+      'runtime id, confirmed, canUndo and canRedo, and a hint when the change was not confirmed.',
+    annotations: WRITE_ANNOTATIONS,
+  },
+  {
+    name: 'drag-component',
+    operation: 'dragComponent',
+    description:
+      'Moves the component with the given runtime id to a dock pair: the parent runtime id and the ' +
+      'parent and child dock ids, and optionally the position and whether to insert between, as a ' +
+      'get-component-docking-positions read returned. The move lands one step in the undo history. ' +
+      'Returns confirmed, canUndo and canRedo, and a hint when the change was not confirmed.',
+    annotations: WRITE_ANNOTATIONS,
+  },
+  {
+    name: 'delete-component',
+    operation: 'deleteComponent',
+    description:
+      'Deletes the component with the given runtime id; redockChildrenToParent chooses between ' +
+      're-docking the children to the parent and deleting them with the component - read the impact ' +
+      'with get-delete-impact first. The deletion lands one step in the undo history. Returns the ' +
+      'deleted component runtime ids, confirmed, canUndo and canRedo, and a hint when the change was ' +
+      'not confirmed.',
+    annotations: DESTRUCTIVE_WRITE_ANNOTATIONS,
+  },
+  {
+    name: 'load-configuration',
+    operation: 'loadConfiguration',
+    description:
+      'Loads an assembly configuration as the new configuration of the configurator; the configuration ' +
+      'must be JSON with a root componentId, as a get-configuration read returned it. This replaces ' +
+      'the configuration; the load lands one step in the undo history. Returns confirmed, canUndo and ' +
+      'canRedo, and a hint when the change was not confirmed.',
+    annotations: DESTRUCTIVE_WRITE_ANNOTATIONS,
+  },
+];
+
 export const createConfiguratorMcpServer = (
   configuratorApi: ConfiguratorApi,
   history: HistoryState
@@ -141,6 +234,34 @@ export const createConfiguratorMcpServer = (
     { description: REDO_DESCRIPTION, inputSchema: {} },
     () => runTool('redo')
   );
+
+  for (const {
+    name,
+    operation,
+    description,
+    annotations,
+  } of CONFIGURATION_OPERATION_TOOLS) {
+    server.registerTool(
+      name,
+      {
+        description,
+        inputSchema: configurationOperationInputSchemas[operation],
+        annotations,
+      },
+      async (args) => {
+        // The payload can carry an assembly configuration; log the tool name only.
+        console.log(`[configurator-mcp] tool ${name}`);
+        const result = await runConfigurationOperationWrite(
+          configuratorApi,
+          history,
+          operation,
+          args
+        );
+        console.log(`[configurator-mcp] tool ${name} returned`);
+        return textResult(result);
+      }
+    );
+  }
 
   server.registerTool(
     'get-configurator-capabilities',

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import { DEFAULT_CALL_TIMEOUT_MS, PageBridge } from '../page-bridge';
+import {
+  ConfiguratorCallTimedOutError,
+  DEFAULT_CALL_TIMEOUT_MS,
+  PageBridge,
+} from '../page-bridge';
 import { BRIDGE_PROTOCOL } from '../types';
 import { attachPage, FakePageSocket, historyEvent } from './fake-page-socket';
 
@@ -87,6 +91,47 @@ describe('PageBridge.call', () => {
     socket.close();
   });
 
+  it('round-trips configuration write arguments and structured results', async () => {
+    const bridge = new PageBridge();
+    const socket = attachPage(bridge, { clientId: 'writer' });
+    const result = {
+      type: 'dockComponent',
+      context: { configurationHash: 'before' },
+      configurationHash: 'after',
+      runtimeId: 42,
+    };
+    socket.respond = vi.fn(() => result);
+    expect(
+      await bridge.call(
+        'executeConfigurationOperation',
+        [
+          'dockComponent',
+          { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+        ],
+        undefined,
+        'writer'
+      )
+    ).toEqual(result);
+    expect(socket.respond).toHaveBeenCalledExactlyOnceWith(
+      'executeConfigurationOperation',
+      [
+        'dockComponent',
+        { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+      ]
+    );
+    socket.respond = undefined;
+    const pending = bridge.call('executeConfigurationOperation', ['undo']);
+    const call = JSON.parse(socket.sent.at(-1)!);
+    socket.receive({
+      kind: 'result',
+      id: call.id,
+      ok: false,
+      error: 'The configurator page disconnected',
+    });
+    await expect(pending).rejects.toThrow('The configurator page disconnected');
+    socket.close();
+  });
+
   it('rejects with the example URL when no page is connected', async () => {
     vi.stubEnv('CONFIGURATOR_MCP_PAGE_URL', undefined);
     vi.stubEnv('CONFIGURATOR_MCP_PORT', undefined);
@@ -154,6 +199,9 @@ describe('PageBridge.call', () => {
       vi.advanceTimersByTime(500);
       await expect(promise).rejects.toThrow(
         "Configurator call 'undo' timed out after 500ms"
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        ConfiguratorCallTimedOutError
       );
     } finally {
       vi.useRealTimers();

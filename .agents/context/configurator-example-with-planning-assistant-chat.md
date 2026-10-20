@@ -3,8 +3,9 @@
 The minimal configurator example is both the host of the MCP bridge and the host of roomle-ui's AI
 Planning Assistant chat window: the user types into the window in the configurator, the page posts
 the conversation to a chat backend, the backend runs a Mistral model that calls the MCP tools, and
-the tools change the live configuration through the page bridge. The first MCP server offers `undo`
-and `redo`; the window is how a user talks to them in natural language.
+the tools read and change the live configuration through the page bridge. The MCP server offers
+eight reads of the configuration and its product options, six writes, and `undo` and `redo`; the
+window is how a user talks to them in natural language.
 
 Everything runs locally: the page on :3000, the MCP server on :3100, the chat backend on :3200, and
 — with `npm run dev` — the Rubens UI dev server on :5173. Nothing is deployed. The user-facing
@@ -86,16 +87,22 @@ item or configuration of the `id` URL parameter (default `usm:frame`).
 - The page checks `typeof instance.extended.planningAssistantOutput === 'function'` before it
   starts the chat; a configurator without the window runs without it and logs that.
 
-## The MCP server: undo and redo
+## The MCP server: the tools
 
-The server (`configurator-mcp/configurator-mcp-server`) registers `undo` and `redo`: one step of
-the configurator's own history per call — the same history the user's undo button uses — confirmed
-by the history event the configurator fires before its call returns. The server keeps the history
-state from the page's events and answers "nothing to undo" / "nothing to redo" without calling the
-configurator when the reported state rules the step out; a step without an event within 1 s is
-reported as not confirmed. The two steps run one at a time. The tool results carry `canUndo` and
-`canRedo` so the answer can say whether a further step is possible. The server instructions name the
-configurator, the tools and that nothing else of the configuration can be changed yet.
+The server (`configurator-mcp/configurator-mcp-server`) registers its tools on two generic SDK
+methods: every read tool relays one `queryConfigurationOperation(type, payload)` call, and every
+write tool — `change-component-parameter`, `change-global-parameter`, `dock-component`,
+`drag-component`, `delete-component`, `load-configuration`, plus `undo` and `redo` — relays one
+`executeConfigurationOperation(name, payload)` call. Every write is one step of the configurator's
+own history — the same history the user's undo button uses — confirmed by its own history event: the
+event confirms the oldest write still waiting, so the late event of a timed-out write cannot confirm
+the write after it. The server keeps the history state from the page's
+events and answers "nothing to undo" / "nothing to redo" without calling the configurator when the
+reported state rules the step out; a write without an event within 1 s is reported as not confirmed
+(`confirmed: false` with a hint). Writes run one at a time. The tool results carry `canUndo` and
+`canRedo` — the write tools also `confirmed` — so the answer can say what happened and whether a
+further step is possible. The server instructions name the configurator, the tools and the
+confirmation semantics.
 
 ## The chat backend
 
@@ -108,8 +115,8 @@ plain text with a `[tool] <name>` line before each tool call; a failure ends the
 - The models are `mistral-medium-latest` and `mistral-large-latest`, selected by the launcher's
   `mistral-medium` / `mistral-large` argument (`CHAT_MODELS` in `chat-config.ts`).
 - The system prompt is the example's own (`SYSTEM_PROMPT` in `chat-config.ts`): the assistant of a
-  Roomle product configurator, the three tools and what they do. roomle-ui provides no system
-  prompt for the configurator; the host supplies it.
+  Roomle product configurator, its read and write tools and what they do. roomle-ui provides no
+  system prompt for the configurator; the host supplies it.
 - Images are refused with `400`; a turn without an answer ends after 5 minutes
   (`CONFIGURATOR_CHAT_TURN_TIMEOUT_MS`), a turn runs up to 16 model steps.
 - The recovery summary (`chat-recovery.ts`) records every tool outcome independently of whether the

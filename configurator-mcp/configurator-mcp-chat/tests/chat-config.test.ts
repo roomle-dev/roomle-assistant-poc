@@ -72,7 +72,7 @@ describe('getChatConfig', () => {
     });
   });
 
-  it('serves the system prompt for product inspection and history changes', () => {
+  it('serves the system prompt for product inspection, configuration writes and history changes', () => {
     expect(SYSTEM_PROMPT).toContain('Roomle product configurator');
     for (const tool of [
       'get-configuration',
@@ -83,6 +83,12 @@ describe('getChatConfig', () => {
       'get-component-docking-positions',
       'get-delete-impact',
       'get-configurator-capabilities',
+      'change-component-parameter',
+      'change-global-parameter',
+      'dock-component',
+      'drag-component',
+      'delete-component',
+      'load-configuration',
       'undo',
       'redo',
     ]) {
@@ -92,6 +98,11 @@ describe('getChatConfig', () => {
       'declared alternatives from current kernel choices'
     );
     expect(SYSTEM_PROMPT).toContain('unresolved');
+    expect(SYSTEM_PROMPT).toContain(
+      'Every write lands one step in the undo history'
+    );
+    expect(SYSTEM_PROMPT).toContain('confirmed');
+    expect(SYSTEM_PROMPT).toContain('unconfirmed change');
   });
 });
 

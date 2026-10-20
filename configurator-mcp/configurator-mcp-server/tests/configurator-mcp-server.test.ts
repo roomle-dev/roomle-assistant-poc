@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type {
   ConfiguratorApi,
+  ConfigurationOperationName,
   ConfigurationOperationQueryType,
 } from '../configurator-api';
 import { createConfiguratorMcpServer } from '../configurator-mcp-server';
@@ -31,10 +32,6 @@ const textOf = (result: unknown): string =>
 
 const configuratorWith = (history: HistoryState): ConfiguratorApi => ({
   extended: {
-    getConfiguratorCapabilities: vi.fn(async () => ({
-      complete: true,
-      unresolved: [],
-    })),
     queryConfigurationOperation: vi.fn(
       async (type: ConfigurationOperationQueryType) => ({
         type,
@@ -42,17 +39,27 @@ const configuratorWith = (history: HistoryState): ConfiguratorApi => ({
         capabilities: { complete: true, unresolved: [] },
       })
     ),
-    undo: vi.fn(async () => history.changed(false, true)),
-    redo: vi.fn(async () => history.changed(true, false)),
+    executeConfigurationOperation: vi.fn(
+      async (name: ConfigurationOperationName) => {
+        if (name === 'undo') history.changed(false, true);
+        else history.changed(true, false);
+        return { type: name, context: {}, configurationHash: 'after' };
+      }
+    ),
   },
 });
 
 describe('configurator-mcp-server', () => {
-  it('exposes the eight read tools and undo and redo', async () => {
+  it('exposes the eight read tools, the six write tools and undo and redo', async () => {
     const history = new HistoryState();
     const client = await connectClient(configuratorWith(history), history);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'change-component-parameter',
+      'change-global-parameter',
+      'delete-component',
+      'dock-component',
+      'drag-component',
       'get-component-docking-positions',
       'get-component-parameters',
       'get-configuration',
@@ -61,6 +68,7 @@ describe('configurator-mcp-server', () => {
       'get-docking-positions',
       'get-global-parameters',
       'get-possible-children',
+      'load-configuration',
       'redo',
       'undo',
     ]);
@@ -74,6 +82,38 @@ describe('configurator-mcp-server', () => {
     expect(readTools).toHaveLength(8);
     for (const tool of readTools) {
       expect(tool.annotations).toEqual(readOnly);
+    }
+    const write = {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    };
+    const destructiveWrite = { ...write, destructiveHint: true };
+    const writeTools = tools.filter((tool) =>
+      [
+        'change-component-parameter',
+        'change-global-parameter',
+        'dock-component',
+        'drag-component',
+        'delete-component',
+        'load-configuration',
+      ].includes(tool.name)
+    );
+    expect(writeTools).toHaveLength(6);
+    for (const tool of writeTools) {
+      expect(tool.annotations).toEqual(
+        ['delete-component', 'load-configuration'].includes(tool.name)
+          ? destructiveWrite
+          : write
+      );
+    }
+    const historyTools = tools.filter((tool) =>
+      ['undo', 'redo'].includes(tool.name)
+    );
+    expect(historyTools).toHaveLength(2);
+    for (const tool of historyTools) {
+      expect(tool.annotations).toBeUndefined();
     }
     const capabilities = tools.find(
       (tool) => tool.name === 'get-configurator-capabilities'
@@ -114,10 +154,38 @@ describe('configurator-mcp-server', () => {
       type: 'object',
       required: ['runtimeId', 'redockChildrenToParent'],
     });
+    expect(byName('change-component-parameter')).toMatchObject({
+      type: 'object',
+      required: ['runtimeId', 'key', 'value'],
+    });
+    expect(byName('change-global-parameter')).toMatchObject({
+      type: 'object',
+      required: ['key', 'value'],
+    });
+    expect(byName('dock-component')).toMatchObject({
+      type: 'object',
+      required: ['child', 'parentId', 'parentDockId'],
+    });
+    expect(byName('dock-component')?.properties?.position).toMatchObject({
+      type: 'object',
+      required: ['x', 'y', 'z'],
+    });
+    expect(byName('drag-component')).toMatchObject({
+      type: 'object',
+      required: ['runtimeId', 'parentId', 'parentDockId', 'childDockId'],
+    });
+    expect(byName('delete-component')).toMatchObject({
+      type: 'object',
+      required: ['runtimeId', 'redockChildrenToParent'],
+    });
+    expect(byName('load-configuration')).toMatchObject({
+      type: 'object',
+      required: ['configuration'],
+    });
     await client.close();
   });
 
-  it('serves instructions for the reads and the two history tools', async () => {
+  it('serves instructions for the reads, the write tools and the two history tools', async () => {
     const history = new HistoryState();
     const client = await connectClient(configuratorWith(history), history);
     const instructions = client.getInstructions() ?? '';
@@ -131,10 +199,21 @@ describe('configurator-mcp-server', () => {
       'get-component-docking-positions',
       'get-delete-impact',
       'get-configurator-capabilities',
+      'change-component-parameter',
+      'change-global-parameter',
+      'dock-component',
+      'drag-component',
+      'delete-component',
+      'load-configuration',
+      'undo',
+      'redo',
     ]) {
       expect(instructions).toContain(tool);
     }
-    expect(instructions).toContain('Only undo and redo can change');
+    expect(instructions).toContain(
+      'every change lands one step in the undo history'
+    );
+    expect(instructions).toContain('confirmed');
     expect(instructions).toContain('unresolved');
     await client.close();
   });
@@ -240,8 +319,126 @@ describe('configurator-mcp-server', () => {
       expect(query).toHaveBeenCalledWith(type, expected);
     }
     expect(query).toHaveBeenCalledTimes(cases.length);
-    expect(api.extended.undo).not.toHaveBeenCalled();
-    expect(api.extended.redo).not.toHaveBeenCalled();
+    expect(api.extended.executeConfigurationOperation).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('relays every write tool through the execute API and reports the confirmation', async () => {
+    const history = new HistoryState();
+    history.changed(true, false);
+    const api = configuratorWith(history);
+    const client = await connectClient(api, history);
+    const execute = vi.mocked(api.extended.executeConfigurationOperation);
+    const cases: [
+      string,
+      Record<string, unknown>,
+      ConfigurationOperationName,
+      Record<string, unknown>,
+    ][] = [
+      [
+        'change-component-parameter',
+        { runtimeId: 7, key: 'width', value: '120' },
+        'changeComponentParameter',
+        { runtimeId: 7, key: 'width', value: '120' },
+      ],
+      [
+        'change-global-parameter',
+        { key: 'height', value: '80' },
+        'changeGlobalParameter',
+        { key: 'height', value: '80' },
+      ],
+      [
+        'dock-component',
+        { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+        'dockComponent',
+        { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: 0 },
+      ],
+      [
+        'drag-component',
+        { runtimeId: 7, parentId: 1, parentDockId: 0, childDockId: 2 },
+        'dragComponent',
+        { runtimeId: 7, parentId: 1, parentDockId: 0, childDockId: 2 },
+      ],
+      [
+        'delete-component',
+        { runtimeId: 7, redockChildrenToParent: false },
+        'deleteComponent',
+        { runtimeId: 7, redockChildrenToParent: false },
+      ],
+      [
+        'load-configuration',
+        { configuration: '{"componentId":"usm:frame"}' },
+        'loadConfiguration',
+        { configuration: '{"componentId":"usm:frame"}' },
+      ],
+    ];
+    for (const [tool, args, operation, expected] of cases) {
+      const response = await client.callTool({ name: tool, arguments: args });
+      expect(response.isError).toBeFalsy();
+      expect(JSON.parse(textOf(response))).toEqual({
+        type: operation,
+        context: {},
+        configurationHash: 'after',
+        confirmed: true,
+        canUndo: true,
+        canRedo: false,
+      });
+      expect(execute).toHaveBeenCalledWith(operation, expected);
+    }
+    expect(execute).toHaveBeenCalledTimes(cases.length);
+    expect(api.extended.queryConfigurationOperation).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('rejects invalid write payloads before any page call', async () => {
+    const history = new HistoryState();
+    const api = configuratorWith(history);
+    const client = await connectClient(api, history);
+    const execute = vi.mocked(api.extended.executeConfigurationOperation);
+    const invalid: [string, Record<string, unknown>][] = [
+      ['change-component-parameter', { runtimeId: 7, key: 'width' }],
+      ['change-component-parameter', { runtimeId: 'x', key: 'w', value: '1' }],
+      ['change-global-parameter', { key: 'height' }],
+      ['dock-component', { parentId: 1, parentDockId: 0 }],
+      ['dock-component', { child: { itemId: 'usm:shelf' } }],
+      [
+        'dock-component',
+        { child: { itemId: 'usm:shelf' }, parentId: 1, parentDockId: '0' },
+      ],
+      ['drag-component', { runtimeId: 7, parentId: 1, parentDockId: 0 }],
+      ['delete-component', { runtimeId: 7 }],
+      ['delete-component', { runtimeId: 7, redockChildrenToParent: 'yes' }],
+      ['load-configuration', {}],
+      ['load-configuration', { configuration: 4 }],
+    ];
+    for (const [tool, args] of invalid) {
+      const result = await client.callTool({ name: tool, arguments: args });
+      expect(result.isError).toBe(true);
+    }
+    expect(execute).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('reports a failed write as a tool error the agent can read', async () => {
+    const history = new HistoryState();
+    history.changed(true, false);
+    const api = configuratorWith(history);
+    const client = await connectClient(api, history);
+    vi.mocked(api.extended.executeConfigurationOperation).mockRejectedValueOnce(
+      new Error(
+        'Invalid dock pair: no dock with this id on the parent component'
+      )
+    );
+    const result = await client.callTool({
+      name: 'dock-component',
+      arguments: {
+        child: { itemId: 'usm:shelf' },
+        parentId: 1,
+        parentDockId: 99,
+      },
+    });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('Invalid dock pair');
     await client.close();
   });
 
@@ -341,15 +538,14 @@ describe('configurator-mcp-server', () => {
     history.changed(true, false);
     const api: ConfiguratorApi = {
       extended: {
-        getConfiguratorCapabilities: vi.fn(async () => ({
-          complete: true,
-          unresolved: [],
-        })),
         queryConfigurationOperation: vi.fn(),
-        undo: vi.fn(async () => {
-          throw new Error('No configurator page connected.');
-        }),
-        redo: vi.fn(),
+        executeConfigurationOperation: vi.fn(
+          async (name: ConfigurationOperationName) => {
+            if (name === 'undo') {
+              throw new Error('No configurator page connected.');
+            }
+          }
+        ),
       },
     };
     const client = await connectClient(api, history);
