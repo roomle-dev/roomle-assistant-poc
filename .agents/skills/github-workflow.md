@@ -24,8 +24,7 @@
 Before committing, run the repository's checks:
 
 ```bash
-npm test               # vitest: the MCP server and the chat backend
-npm run typecheck      # tsc --noEmit on both packages
+npm test               # Node launcher tests; SDK and assistant tests run in roomle-ui
 npm run lint           # Oxlint
 npm run format:check   # Prettier
 node .agents/scripts/check-markdown-links.js <changed .md files>
@@ -89,7 +88,7 @@ Before committing, verify:
 - [ ] All changes reviewed (`git status`, `git diff`)
 - [ ] Only related files staged (no `git add .` without review)
 - [ ] No build artifacts, temp files, or debug code staged
-- [ ] Checks pass (`npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`)
+- [ ] Checks pass (`npm test`, `npm run lint`, `npm run format:check`)
 - [ ] Documentation obligations checked (indexes, ADRs, analysis close-outs, context docs)
 - [ ] Commit message follows conventional format
 - [ ] Commit created and verified

@@ -20,14 +20,14 @@ the Jira comments.
 - Investigation narratives, status history or the record of a failed attempt — those are analysis
   documents.
 - Open work — that is the [backlog](../backlog/README.md).
-- On-demand domain knowledge for a task — that is a [skill](../skills/configurator-mcp-server.md).
+- On-demand domain knowledge for a task — that is a [skill](../skills/configurator-assistant.md).
 - End-user documentation — that is [`docs/`](../../docs/README.md).
 
 ## Current Documents
 
 | Document | Covers |
 |---|---|
-| [The roomle-ui configurator API for the MCP server](roomle-configurator-api-for-mcp.md) | The queries and operations the MCP server needs, which parts of roomle-ui's `RoomleConfigurator` public API already cover them, and which parts are missing |
+| [The roomle-ui configurator API for agent tools](roomle-configurator-api-for-mcp.md) | The native queries, operations and SDK tool integration |
 
 Add wiki pages as needed following the naming convention: `kebab-case-description.md`
 (e.g., `page-bridge-protocol.md`).

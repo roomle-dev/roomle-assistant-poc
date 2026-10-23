@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Roomle configurator MCP server enables interactive configuration of Roomle objects in the standalone configurator or the isolation mode of the planner, directly in the browser session. An AI agent reads what a configurator can be — its component definitions, the items in their possible children, the parameter values and the material properties — and configures the object through MCP tools: a complete configuration from a configuration JSON, and manipulations such as docking components, deleting components, changing parameters, undo and redo. The pattern is the HI MCP server of [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example). Today the server offers `get-configurator-capabilities`, `undo` and `redo`, and the example's AI Planning Assistant window runs a Mistral chat that calls them.
+The native configurator example runs the browser assistant of roomle-ui. The iframe owns sixteen on-demand tools, product discovery, editing and prompts; the embedding library runs the host agent. The static launcher serves the page and local model configuration. The architecture follows [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example).
 
 Every markdown document in this folder, in one place. Add a line here whenever you add a document —
 see **Where Documentation Goes** in [`../AGENTS.md`](../AGENTS.md#where-documentation-goes).
@@ -30,6 +30,7 @@ ADR documents in `.agents/decisions/` as needed, following the
 | ADR | Status |
 |---|---|
 | [0001 — SDK-owned configurator capabilities](decisions/0001-sdk-owned-configurator-capabilities.md) | Accepted |
+| [0002 — Configurator tools run in the SDK](decisions/0002-configurator-tools-run-in-the-sdk.md) | Accepted |
 
 ---
 
@@ -48,7 +49,7 @@ Skills provide deep domain knowledge for AI agents. Load them when the task matc
 | [roomle-pr-resolution.md](./skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads | Resolving a PR; never merge it |
 | [analysis-closeout.md](./skills/analysis-closeout.md) | Close out a single analysis document at commit time: verify it landed, promote the durable outcome, delete the document | Work with an analysis document is being committed |
 | [github-workflow.md](./skills/github-workflow.md) | Git staging, conventional commits, pre-commit checklist, PR guidelines | Before every commit, push, or pull request |
-| [configurator-mcp-server.md](./skills/configurator-mcp-server.md) | The MCP server and its tools, the page bridge and its protocol, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
+| [configurator-assistant.md](./skills/configurator-assistant.md) | Browser assistant, SDK integration and static launcher | Assistant integration and launcher development |
 
 ### Scripts
 
@@ -63,7 +64,7 @@ each feature works today. The index is [the feature index](context/README.md).
 
 | Feature | Covers |
 |---|---|
-| [The configurator example with the AI Planning Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | The chat API on the shared callback base (roomle-ui), the example page as host with the Mistral chat backend and the page bridge, the MCP server and the table of its tools, the launcher |
+| [The configurator example with the AI Planning Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
 | [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
 
 ### Wiki
@@ -73,14 +74,14 @@ repositories, a data-flow summary. Not an analysis: no lifecycle, updated when t
 
 | Page | Covers |
 |---|---|
-| [The roomle-ui configurator API for the MCP server](./wiki/roomle-configurator-api-for-mcp.md) | The queries and operations the MCP server needs, which parts of roomle-ui's `RoomleConfigurator` public API already cover them, and which parts are missing |
+| [The roomle-ui configurator API for agent tools](./wiki/roomle-configurator-api-for-mcp.md) | The native queries, operations and SDK tool integration |
 
 ### User-Facing Documentation
 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
 indexed by [docs/README.md](../docs/README.md):
 
-- [configurator-mcp-server.md](../docs/configurator-mcp-server.md) — The page, the MCP server and its tools, the chat backend, running and connecting them
+- [configurator-assistant.md](../docs/configurator-assistant.md) — Browser assistant, tools, providers and compatibility
 
 ---
 
@@ -111,7 +112,7 @@ done. The analysis and the report are the same document — the report is append
 
 | Document | Status | Last touched |
 |---|---|---|
-| [Move the configurator agent tools into roomle-ui](refactoring-analysis/configurator-agent-tools-in-roomle-ui.md) | Open — lazy SDK tools, shared embedding assistant, and example/transport refactoring | 2026-10-23 |
+| [Move the configurator agent tools into roomle-ui](refactoring-analysis/configurator-agent-tools-in-roomle-ui.md) | Done — implemented and verified on feature branches; awaiting default-branch landing | 2026-10-23 |
 
 ### Benchmarks
 

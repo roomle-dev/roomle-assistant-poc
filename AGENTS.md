@@ -5,7 +5,7 @@
 ## Always Do This First
 
 1. **Load matching skills.** Check the [On-Demand Skills](#on-demand-skills) catalog and read every skill file whose domain matches the task *before* taking action. Multiple skills may apply to one task.
-2. **Read [`docs/README.md`](./docs/README.md)** before answering architecture or domain questions. It is the index of the living reference: how the example page, the MCP server and its tools work today.
+2. **Read [`docs/README.md`](./docs/README.md)** before answering architecture or domain questions. It is the index of the living reference: how the example page, browser assistant and SDK tools work today.
 3. **Read [`.agents/README.md`](./.agents/README.md)** for the complete digital brain index, separating living reference from historical records.
 4. **Treat documentation as part of the task, not a follow-up.** Every analysis produces a document, and every change to productive code updates one — see [Where Documentation Goes](#where-documentation-goes).
 
@@ -70,30 +70,28 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Project**: roomle-configurator-mcp
 - **Repository**: `roomle-dev/roomle-configurator-mcp`
 - **Default branch**: `master`
-- **Language**: JavaScript/TypeScript (Node.js 20+), HTML
-- **Purpose**: Standalone Roomle configurator example with an MCP server for configuring Roomle objects in the standalone configurator or the isolation mode of the planner
+- **Language**: JavaScript ES modules, HTML; Node.js 22+ for development
+- **Purpose**: Standalone native configurator example with the browser assistant and on-demand SDK tools of roomle-ui
 
 ## Project Overview
 
 roomle-configurator-mcp is a demonstration and development environment for:
 
 1. **Minimal Configurator Example** — A standalone HTML page (`minimal-configurator-example/index.html`) that initialises a default Roomle configurator with the embedding-lib, served by the launcher `minimal-configurator-example/start.mjs`
-2. **Configurator MCP Server** — The TypeScript MCP server (`configurator-mcp/configurator-mcp-server`) that lets AI agents change a Roomle configuration in a live configurator session. Its tools call the `RoomleConfigurator` API through the page: eight reads of the configuration and its product options, six writes, and `undo` and `redo`
-3. **AI Chat** — The chat backend (`configurator-mcp/configurator-mcp-chat`, Vercel AI SDK, the Mistral models `mistral-medium-latest` and `mistral-large-latest`) behind roomle-ui's AI Planning Assistant window in the configurator; an MCP client of the server
+2. **SDK tools** — roomle-ui owns eight reads, six writes, undo and redo, loaded on demand inside the configurator. This repository maintains no local tool implementation.
+3. **Browser assistant** — The optional `@roomle/embedding-lib/configurator` entry runs the agent in the host page, with the existing AI Planning Assistant window in the iframe.
 
-The pattern for this repository is [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example): the HI MCP server there plans HOMAG Intelligence object groups in a live Roomle room-planner session, from two JSON files (master data and the articles of a library) that describe every configuration option. A Roomle configurator has no such single data set:
+The pattern is [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example): tools run in the iframe and the embedding library runs the host agent. The native configurator has no single HI library data set:
 
 - Its scope is defined by all the component definitions that can be assembled, and by the items named in the possible children of the components. Collecting them means reading and interpreting the component definitions recursively.
 - The possible values of a parameter come from the component definition and from the `validGroups` that have to be requested ([parameter value sources](https://github.com/roomle-internal/RoomleCore/blob/master/documentation/features/script/parameter-value-sources.md#parameter-value-sources) in RoomleCore).
 - Materials are ids; name, thumbnail and colour come from the material definition, fetched per material.
 - The product is whatever the component definitions define — not only cabinets and kitchens.
-- The docking logic of Roomle components is more complicated than the docking of HI articles and has to be simplified for the agent, as the HI MCP server does with relations between articles.
+- Native docking choices and editing are calculated by the SDK and kernel. Do not duplicate product interpretation in the example.
 
 The start script (`npm start`) provides:
-- A build gate: `npm install` (first run) and the typecheck of the `configurator-mcp` workspace
 - Static file serving for the example HTML page on port 3000
-- The MCP server on port 3100: `POST /mcp` (Streamable HTTP) and the page bridge (WebSocket `/bridge`)
-- With `npm start mistral-medium <api-key>` or `npm start mistral-large <api-key>`: the chat backend on port 3200 and the page opened with the AI Planning Assistant window
+- With a model and key: local `/planning-assistant-config.json` and the browser assistant
 - Browser auto-open at the example URL
 
 ## Repository Structure
@@ -102,34 +100,13 @@ The start script (`npm start`) provides:
 .
 ├── minimal-configurator-example/   # Minimal standalone configurator example
 │   ├── index.html                  # The example page (single file, inline JS)
-│   ├── start.mjs                   # Launcher: build gate, static serving (:3000), MCP server, chat backend
+│   ├── start.mjs                   # Static launcher (:3000), local model configuration
+│   ├── tests/start.test.js         # Node launcher tests
 │   └── README.md                   # How to run the page, its URL parameters
-├── configurator-mcp/               # TypeScript workspace (npm workspaces, vitest)
-│   ├── package.json                # Workspace root: start/test/typecheck scripts
-│   ├── tsconfig.base.json          # Strict ES2022 compiler options for Node
-│   ├── vitest.config.ts            # Unit tests of both packages
-│   ├── configurator-mcp-server/    # The MCP server: /mcp + /bridge on :3100, the read and write tools, undo and redo
-│   │   ├── server.ts               # Entry point
-│   │   ├── configurator-mcp-server.ts # McpServer: instructions, tool registrations
-│   │   ├── tool-executors.ts       # The read and write executors, confirmed history steps
-│   │   ├── history-state.ts        # The configurator's undo history state from the page's events
-│   │   ├── configurator-api.ts     # The configurator methods the tools call, relayed to the page
-│   │   ├── page-bridge.ts          # Connected page, call correlation, timeouts
-│   │   ├── types.ts                # WebSocket message protocol
-│   │   └── tests/                  # Unit tests, the fake page socket, the launcher test
-│   ├── configurator-mcp-chat/      # The chat backend: POST /chat on :3200, Mistral, MCP client of the server
-│   │   ├── chat-server.ts          # Entry point
-│   │   ├── chat-config.ts          # The two models, the system prompt, the environment, message parsing
-│   │   ├── chat-handler.ts         # /health, /chat, CORS
-│   │   ├── chat-stream.ts          # MCP client, streamText, the [tool] and [error] lines
-│   │   ├── chat-steps.ts           # Step loop, step log, turn timeout
-│   │   ├── chat-recovery.ts        # What an interrupted reply says about the tool calls
-│   │   └── tests/                  # Unit tests
-│   └── README.md                   # The workspace, file by file
 ├── docs/                           # Living reference for users and developers
 │   ├── README.md                   # Index of every document in docs/
-│   └── configurator-mcp-server.md  # Reference: the page, the MCP server, its tools, the chat
-├── package.json                    # Repository root: start/dev/mcp-server/test/typecheck/format/lint scripts
+│   └── configurator-assistant.md   # Browser assistant usage and compatibility
+├── package.json                    # start/dev/test/format/lint scripts
 ├── README.md                       # Quickstart and usage guide
 ├── AGENTS.md                       # This file - AI assistant instructions
 ├── CLAUDE.md                       # Redirect to AGENTS.md (for Claude Code)
@@ -161,13 +138,13 @@ The start script (`npm start`) provides:
 │   │   ├── analysis-cleanup.md     # Closing out landed analyses into .agents/context
 │   │   ├── analysis-closeout.md    # Close out a single analysis at commit time
 │   │   ├── cleanup-backlog.md      # Sweep the backlog, verify every item
-│   │   ├── configurator-mcp-server.md # The MCP server, the bridge, the chat, adding a tool
+│   │   ├── configurator-assistant.md # The browser assistant and launcher
 │   │   ├── github-workflow.md      # Git staging, commits, pre-commit checklist
 │   │   ├── plan-implementation.md  # Plan an implementation with unit tests
 │   │   └── roomle-pr-resolution.md # Resolving a pull request's review
 │   └── wiki/                       # Wiki pages: durable living-reference answers
 │       ├── README.md
-│       └── roomle-configurator-api-for-mcp.md # The roomle-ui API the MCP server needs
+│       └── roomle-configurator-api-for-mcp.md # The roomle-ui API the agent tools use
 ├── .temp/                          # Scratch space, git-ignored
 ├── .oxlintrc.json                  # Oxlint settings
 ├── .prettierrc.json                # Prettier settings
@@ -189,7 +166,7 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 | [`.agents/skills/roomle-pr-resolution.md`](./.agents/skills/roomle-pr-resolution.md) | Resolving a pull request: verifying suggested changes, applying them, replying to every review comment, resolving threads. Never merge the PR |
 | [`.agents/skills/analysis-closeout.md`](./.agents/skills/analysis-closeout.md) | Closing out a single analysis document once its work has landed |
 | [`.agents/skills/github-workflow.md`](./.agents/skills/github-workflow.md) | Before every commit, push, or pull request |
-| [`.agents/skills/configurator-mcp-server.md`](./.agents/skills/configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, the example page's MCP and chat code; adding a tool |
+| [`.agents/skills/configurator-assistant.md`](./.agents/skills/configurator-assistant.md) | Browser assistant integration, compatible SDK tools, the example and launcher |
 
 ## Key Architecture Patterns
 
@@ -197,19 +174,16 @@ Skills provide deep domain knowledge. Load them by reading the file when the tas
 
 1. **One file, no build step** — `minimal-configurator-example/index.html` imports `@roomle/embedding-lib` from unpkg (pinned version) and runs plain JavaScript
 2. **A default configurator** — `RoomleConfiguratorApi.createConfigurator('demoConfigurator', …)`, then `instance.ui.loadObject(id)` with the item or configuration from the `id` URL parameter (default `usm:frame`)
-3. **URL parameters are init options** — every query-string parameter except `id` is passed to `createConfigurator`; `overrideServerUrl` points the page at another Rubens UI, which `npm run dev` uses for the local dev server on :5173
+3. **URL parameters are init options** — every query-string parameter except `id` and `chat` is passed to `createConfigurator`; `overrideServerUrl` points the page at another Rubens UI, which `npm run dev` uses for the local dev server on :5173
 4. **The launcher** — `start.mjs` serves the folder on port 3000 (`EXAMPLE_PORT`) and opens the browser (`--no-open` skips that)
 
-### The MCP Server
+### The browser assistant
 
-1. **Tools in the server, configurator calls in the page** — The tools run in `configurator-mcp-server` (`@modelcontextprotocol/sdk`, `ws`, run via `vite-node`); the configurator methods they call (`configurator-api.ts`) go over the `/bridge` WebSocket to the page, which executes them on `instance.extended` — only the methods of its `CONFIGURATOR_METHODS` allow-list, the same list the server names
-2. **Streamable HTTP** — `POST /mcp`, JSON response mode, stateless (a new server and transport per request); `?client=<clientId>` binds a request to its page
-3. **The undo history from the configurator** — The page relays the configurator's `onHistoryChange` as `historyChange` events and its last state on connection; the server answers "nothing to undo" from that state and confirms each step by its event
-4. **The bridge protocol of roomle-hi-example** — protocol 2: `hello`, `ready`, `call`, `result`, `event`
-5. **The chat is an MCP client beside the server** — `configurator-mcp-chat` holds the Mistral key and the system prompt and connects to `/mcp` per turn; the page keeps the conversation and feeds the AI Planning Assistant window through `onPlanningAssistantPrompt` and `planningAssistantOutput` of the configurator (roomle-ui)
-6. **Local only** — every process runs on localhost; nothing is deployed
-
-The SDK owns capability discovery: component definitions, item presets, declared and current parameter choices, material metadata and docking constraints, and it calculates the docking placements (the kernel's `getDockPairs`) and performs the editing operations (`executeConfigurationOperation`). The MCP server relays the SDK result and confirms every write with the configurator's history event.
+The iframe owns tool discovery, prompts and execution. The embedding library runs the host agent,
+calling those methods through the existing embedding channel. Native history outcomes come from
+the SDK operation result. There is no `/mcp` endpoint, WebSocket bridge or local chat backend.
+The key remains visible in the browser. Keep config serving limited to a local peer/Host with
+`Cache-Control: no-store`, and keep keys out of URLs and logs.
 
 ## Hard Rules
 
@@ -217,11 +191,10 @@ The SDK owns capability discovery: component definitions, item presets, declared
 
 - **Prettier** — Format with `npm run format` before committing; `npm run format:check` checks it. The settings are in `.prettierrc.json`, the excluded paths in `.prettierignore` (Markdown is not formatted)
 - **Oxlint** — `npm run lint` checks the JavaScript and TypeScript files for correctness errors, `npm run lint:fix` fixes what it can. The settings are in `.oxlintrc.json`; the inline script of `minimal-configurator-example/index.html` is not linted
-- **TypeScript** — `npm run typecheck` type-checks the `configurator-mcp` workspace with `tsc --noEmit`; it must pass before committing
 - **ES Modules** — Use `import/export` syntax, not CommonJS `require`
 - **Async/Await** — Prefer async/await over Promise chains
 - **Error Handling** — Use try/catch for synchronous errors, .catch() for promises
-- **No new dependencies without reason** — The MCP server is the `configurator-mcp` workspace package with its own locked dependencies; do not add dependencies to it or to the launcher without need
+- **No new dependencies without reason** — Keep the static launcher dependency-free
 
 ### Naming Conventions
 
@@ -239,14 +212,10 @@ The SDK owns capability discovery: component definitions, item presets, declared
 - **No header comments** — No file-level author/license headers
 - **No section dividers** — No `// ===` or `// ---` lines
 
-## MCP Server Specific Rules
+## Agent Tool Rules (roomle-ui)
 
-### Protocol Compliance
-
-- Support multiple MCP protocol versions as needed
-- Implement the required MCP endpoint: `POST /mcp` (Streamable HTTP, JSON response mode)
-- Validate tool call parameters before processing
-- Return proper error responses for invalid inputs
+Tool implementation and unit tests belong to roomle-ui. This repository forwards calls through
+the embedding library and does not implement an MCP transport or duplicate tool schemas.
 
 ### Tool Implementation
 
@@ -258,7 +227,7 @@ The SDK owns capability discovery: component definitions, item presets, declared
 
 ### Guards Are a Last Resort
 
-A **guard** is a check in the MCP server that refuses an agent's input because it identifies the
+A **guard** is a check in the SDK tools that refuses an agent's input because it identifies the
 input as wrong: the call fails and nothing is created. A guard fights the symptom, not the cause,
 and it hinders the agent from creating the configuration: every refusal costs the agent a step of
 its turn.
@@ -271,13 +240,13 @@ API makes the wrong payload easy to write. That is where the fix belongs.
 
 1. **Clarify the instructions.** Find the rule sentence, tool description or example that led the
    agent to the wrong content, and make it say the right thing plainly — shorter, not longer.
-2. **Simplify the tool API.** When the agent has to compute or encode something the server can
-   derive — a position, a docking entry, a partner vector — let the server derive it, so the wrong
+2. **Simplify the tool API.** When the agent has to compute or encode something the SDK can
+   derive — a position, a docking entry, a partner vector — let the SDK derive it, so the wrong
    payload cannot be written in the first place.
-3. **Correct the input and inform the agent.** Whenever the server can, it corrects the input,
+3. **Correct the input and inform the agent.** Whenever the SDK can, it corrects the input,
    applies the change, and says in the tool result what it corrected, so the agent learns from the
    note without losing a step.
-4. **Give feedback and ask for the correction.** When the server cannot correct the input, it
+4. **Give feedback and ask for the correction.** When the SDK cannot correct the input, it
    still applies what it can, and the result says what was not applied, why, and what to send
    instead.
 5. **Reject only as a last resort** — when nothing in the call can be applied, or its intent
@@ -286,26 +255,26 @@ API makes the wrong payload easy to write. That is where the fix belongs.
 Rules:
 
 - A new guard needs a written reason in its analysis why steps 1–4 do not work.
-- An error message that names the one fix is a sign that the server can apply that fix itself.
-- Never refuse what the user may legitimately want. The server cannot tell such a request from a
+- An error message that names the one fix is a sign that the SDK can apply that fix itself.
+- Never refuse what the user may legitimately want. The SDK cannot tell such a request from a
   mistake.
 - The served rules and tool descriptions describe how to succeed, not which payloads are rejected.
 - A bug analysis of wrong content an agent created names the instruction or the part of the tool
-  API that led the agent there. "The server accepted it" is not a root cause.
+  API that led the agent there. "The SDK accepted it" is not a root cause.
 
 ## General-Purpose Policy
 
-The MCP server is for **general purposes**. There is one MCP server for every
-configurator; it must not contain information about a specific configurator.
+The SDK tool set is for **general purposes**. The same tools serve every
+configurator; they must not contain information about a specific configurator.
 
-This policy exists so that bugs in the MCP server can be fixed from specific bug
+This policy exists so that bugs in the SDK tools can be fixed from specific bug
 reports. A bug fix must **never** involve adding specific information about the
 malfunctioning configurator to resolve the issue — that is a hack and is
 absolutely forbidden.
 
 If a configurator behaves specially and this needs to be communicated to the AI
 agent, the information must come from the configurator's own components and
-items. In future, it may be necessary to add descriptions for the MCP server to
+items. In future, it may be necessary to add descriptions for the agent tools to
 the components of a configurator.
 
 ## Where Documentation Goes
@@ -431,7 +400,7 @@ ADRs are living reference. They are read before proposing a change to an area th
 - Tests use descriptive names and cover both the happy path and edge cases.
 - A bug fix is not complete until a test reproduces the bug and the fix makes it pass.
 - Run the full test suite after changes to ensure no regressions.
-- Use vitest for unit tests: `npm test` runs the MCP server and chat backend tests.
+- `npm test` runs Node launcher tests; native tool and assistant tests run in roomle-ui.
 
 ### Infrastructure
 
@@ -459,50 +428,31 @@ When the repository uses Atlassian Jira:
 
 ```bash
 npm install
-npm start                            # page :3000 and MCP server :3100
-npm start mistral-medium <api-key>   # plus the chat backend :3200 and the AI Planning Assistant window
+npm start                            # static page :3000
+npm start mistral-medium <api-key>   # browser assistant and local model config
 npm start mistral-large <api-key>
-npm run mcp-server                   # the MCP server alone
 ```
 
 The launcher opens <http://localhost:3000/> (`?chat=true` with a model). `npm run dev`
 opens the page against the local Rubens UI dev server (:5173) instead; `npm start -- --no-open`
 skips the browser. The chat needs a Rubens UI whose configurator has the AI Planning Assistant
-window. Details: [`docs/configurator-mcp-server.md`](./docs/configurator-mcp-server.md).
+window and native agent methods. Details: [`docs/configurator-assistant.md`](./docs/configurator-assistant.md).
 
 ### Checks Before Committing
 
 ```bash
-npm test               # vitest: the MCP server and the chat backend
-npm run typecheck      # tsc --noEmit on both packages
+npm test               # Node launcher tests
 npm run lint           # Oxlint
 npm run format:check   # Prettier
 node .agents/scripts/check-markdown-links.js <changed .md files>
 ```
 
-## MCP Client Connection
-
-The server provides its MCP endpoint at `http://localhost:3100/mcp` while it runs; the tools work
-while the example page is open.
-
-| Client | Connection |
-|---|---|
-| Claude Code | `claude mcp add --transport http --scope user configurator-mcp http://localhost:3100/mcp` |
-| GitHub Copilot VS Code | MCP: Open User Configuration → add an HTTP server with that URL |
-| Cursor | Add an HTTP MCP server with that URL |
-
-**Note**: a browser-hosted client cannot reach a localhost server.
-
 ## Adding New Tools
 
-1. Register the tool in `configurator-mcp/configurator-mcp-server/configurator-mcp-server.ts` (zod schema, description of how to succeed and what it returns)
-2. Implement its executor in `tool-executors.ts`; a tool that changes the configuration runs one at a time
-3. A configurator method the page does not expose yet: add it to `configurator-api.ts` and to `CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html` — a public method of roomle-ui's `RoomleConfigurator`
-4. Name the tool in the server's instructions and the chat's system prompt when the agent needs to know when to use it
-5. Add or extend the unit tests in the matching `tests/` folder
-6. Update `docs/configurator-mcp-server.md`, the tool table in `.agents/context/configurator-example-with-planning-assistant-chat.md` and `.agents/skills/configurator-mcp-server.md`
-
-Details: [`.agents/skills/configurator-mcp-server.md`](./.agents/skills/configurator-mcp-server.md).
+Add tools in roomle-ui's `configurator-core/src/configurator-mcp/`, with SDK tests and its living
+reference. Keep product discovery and operation completion SDK-owned. The example receives tool
+updates with its UI deployment. A changed embedding API also needs a compatible published library.
+Details: [`.agents/skills/configurator-assistant.md`](./.agents/skills/configurator-assistant.md).
 
 ## Suggested Change Workflow
 

@@ -39,7 +39,7 @@ A document counts as landed only when all of these hold:
 - The behaviour is in the code on `master`: the tool, method or feature the analysis names exists
   where the analysis said it would land (grep the tool registration, the page allow-list, the
   public method).
-- The repository gates pass: `npm test`, `npm run typecheck`, `npm run lint`,
+- The repository gates pass: `npm test`, `npm run lint`,
   `npm run format:check`.
 
 A document whose work cannot be established as landed stays.
@@ -93,7 +93,7 @@ link to it at the living-reference location that now carries the outcome, and re
 ### 4. Check
 
 - Link check over every markdown file:
-  `find . -name '*.md' -not -path './node_modules/*' -not -path './.temp/*' -not -path './configurator-mcp/*/node_modules/*' | sort | xargs node .agents/scripts/check-markdown-links.js`
+  `rg --files --hidden -g '*.md' -g '!node_modules' -g '!.temp' -g '!.git' | sort | xargs node .agents/scripts/check-markdown-links.js`
   — the result is `bad 0`. Without file arguments the script checks nothing.
 - No plain-text mention of a deleted path: `grep -rn "<analysis folder>/<deleted slug>"
   --include='*.md' .` (for example `feature-analysis/<deleted slug>`) — search the deleted folder

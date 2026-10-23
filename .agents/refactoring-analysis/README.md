@@ -44,7 +44,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
-| [Move the configurator agent tools into roomle-ui](configurator-agent-tools-in-roomle-ui.md) | Open | Compare the HI and configurator architectures; lazy SDK tools, shared embedding assistant, and example/transport refactoring |
+| [Move the configurator agent tools into roomle-ui](configurator-agent-tools-in-roomle-ui.md) | Done | Implemented and verified on feature branches; retained until all affected default branches contain the work |
 
 Add refactoring analysis documents as needed following the naming convention:
 `kebab-case-description.md` (e.g., `tool-executor-split.md`).

@@ -20,7 +20,8 @@ Each ADR carries:
 
 | ADR | Title | Status |
 |---|---|---|
-| [0001 — SDK-owned configurator capabilities](0001-sdk-owned-configurator-capabilities.md) | The SDK owns capability discovery; the MCP server relays the SDK result | Accepted |
+| [0001 — SDK-owned configurator capabilities](0001-sdk-owned-configurator-capabilities.md) | The SDK owns capability discovery and its agent tool returns the result | Accepted |
+| [0002 — Configurator tools run in the SDK](0002-configurator-tools-run-in-the-sdk.md) | Lazy iframe tools, shared host assistant and a static example | Accepted |
 
 ## Adding an ADR
 

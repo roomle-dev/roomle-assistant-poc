@@ -1,24 +1,24 @@
 # Configurator capabilities for the configurator MCP
 
-`get-configurator-capabilities` is a read-only capability of the configurator MCP server: an AI
+`get-configurator-capabilities` is a read-only tool of the configurator's on-demand SDK registry: an AI
 agent reads what the connected configurator can be — the recursively declared product options — and
 what is currently valid in the live session. The result distinguishes **declared possibilities** from
 **currently evaluated choices**: reading only the current parameters misses dormant components and
 conditional alternatives; reading only component definitions misses evaluated conditions,
 shared-parameter intersections and material-group contents. The contract is one SDK read —
 `RoomleConfigurator.queryConfigurationOperation('capabilities', { include })`, built on
-`getConfiguratorCapabilities(include?)` — and one MCP read tool here
-that relays it. The design decision is [ADR 0001 — SDK-owned configurator
+`getConfiguratorCapabilities(include?)` — and one SDK-owned agent tool
+that returns it. The design decision is [ADR 0001 — SDK-owned configurator
 capabilities](../decisions/0001-sdk-owned-configurator-capabilities.md); the user-facing reference is
-[the tools section of the server reference](../../docs/configurator-mcp-server.md#tools).
+[the assistant guide](../../docs/configurator-assistant.md).
 
 ## The call chain
 
 ```text
 MCP tool get-configurator-capabilities
-  → ConfiguratorApi.extended.queryConfigurationOperation('capabilities', { include })
-  → PageBridge call over /bridge (protocol 2)
-  → example page: instance.extended.queryConfigurationOperation('capabilities', { include })
+  → embedding callConfiguratorAgentTool through the normal message channel
+  → configurator SDK tool registry
+  → queryConfigurationOperation('capabilities', { include })
   → iframe RoomleConfigurator: dynamic import of the operation implementation
   → getConfiguratorCapabilities(include?): dynamic import of the collector
   → collector in roomle-ui common-core/src/mcp-api/configurator-capabilities.ts
@@ -46,7 +46,7 @@ cached DTO. It always carries a small envelope plus the requested sections:
 | `unresolved` | Entries identifying a resource/section and the reason it is missing |
 
 `include` selects sections; omitted or empty requests all six. Invalid names are rejected before
-the page is called.
+the SDK operation is called.
 
 | Section | Contents |
 |---|---|
@@ -92,8 +92,8 @@ Parameter semantics the JSON preserves:
 
 ## Read semantics
 
-- The read changes no configuration, selection or history; it does not wait for a history event and
-  does not enter the history queue. It may fetch catalog metadata, so it is not an offline-only
+- The read changes no configuration, selection or history and does not wait for a history event.
+  It joins the SDK operation chain with other reads and writes. It may fetch catalog metadata, so it is not an offline-only
   tool.
 - The active target is established from the configuration runtime ID and the actual kernel root —
   not from the last loaded RAPI ID. Outside an active configurator or isolation session the read
@@ -105,20 +105,16 @@ Parameter semantics the JSON preserves:
   metadata is reported, and cached/offline group data is never declared authoritative. Useful
   partial catalog data returns with `complete: false`; an invalid or missing component or item
   configuration identifies the affected resource.
-- The bridge deadline is 30 seconds; a deep catalog may need a larger read timeout.
 
-## The MCP side
+## The agent tool
 
-- The tool is registered in `configurator-mcp-server.ts` with a Zod `include` array of the six
+- The tool is registered in roomle-ui's `configurator-mcp-tools.ts` with a Zod `include` array of the six
   section names, annotated read-only, non-destructive, idempotent and open-world. Its description
   says that it reads the connected configurator, explains declared versus currently valid choices,
   and does not change the product.
-- `configurator-api.ts` relays the call with its arguments and returns the JSON, preserving the
-  `clientId`; the result passes through as JSON text.
-- The page allow-list (`CONFIGURATOR_METHODS` in `minimal-configurator-example/index.html`) carries
-  exactly `queryConfigurationOperation` and `executeConfigurationOperation`; a UI build without them
-  produces an explicit update message naming the method, not an empty capabilities object.
-- The server instructions and the chat system prompt tell the agent to inspect capabilities for
+- The embedding adapter lists the iframe's definitions and forwards each call. The result passes
+  through as JSON text. A UI without the agent methods produces an explicit upgrade message.
+- The SDK-owned prompt tells the agent to inspect capabilities for
   product questions, to use current kernel choices for what is available now, and to acknowledge
   unresolved information when `complete` is false. Chat recovery describes an interrupted read as
   an incomplete read — never as a possible unconfirmed change — and never prints a full
@@ -138,9 +134,9 @@ operation at a queried pair.
 
 | Area | Files |
 |---|---|
-| MCP tool, relay, allow-list constant | `configurator-mcp/configurator-mcp-server/configurator-mcp-server.ts`, `configurator-api.ts`, `tool-executors.ts` |
-| Page allow-list and method-availability check | `minimal-configurator-example/index.html` |
-| Agent instructions, system prompt, recovery wording | `configurator-mcp/configurator-mcp-server/configurator-mcp-server.ts` (`INSTRUCTIONS`), `configurator-mcp/configurator-mcp-chat/chat-config.ts` (`SYSTEM_PROMPT`), `configurator-mcp/configurator-mcp-chat/chat-recovery.ts` |
+| Agent tool and schema | roomle-ui `configurator-core/src/configurator-mcp/` |
+| Example host | `minimal-configurator-example/index.html` |
+| Prompts and recovery | roomle-ui `configurator-core/src/configurator-mcp/agent-prompts.ts`, embedding-lib `src/configurator-agent/chat-recovery.ts` |
 | SDK method (thin, dynamic import) | roomle-ui `configurator-core/src/roomle-configurator.ts` (`getConfiguratorCapabilities`) |
 | Collector and public types | roomle-ui `common-core/src/mcp-api/configurator-capabilities.ts`, exported type-only from `packages/web-sdk/packages/index.ts` |
 | Embedder contract | roomle-ui `packages/embedding-lib/docs/configurator-capabilities.md` |
@@ -149,11 +145,11 @@ operation at a queried pair.
 
 - [The feature index](README.md) — every feature context document
 - [ADR 0001 — SDK-owned configurator capabilities](../decisions/0001-sdk-owned-configurator-capabilities.md)
-- [`docs/configurator-mcp-server.md`](../../docs/configurator-mcp-server.md) — the user-facing
+- [Configurator assistant](../../docs/configurator-assistant.md) — the user-facing
   reference: the tools, their results, running and connecting them
-- [The configurator MCP server skill](../skills/configurator-mcp-server.md) — the capabilities
+- [The configurator assistant skill](../skills/configurator-assistant.md) — the capabilities
   read, adding a tool, tests
-- [The roomle-ui configurator API for the MCP server](../wiki/roomle-configurator-api-for-mcp.md) —
+- [The roomle-ui configurator API for agent tools](../wiki/roomle-configurator-api-for-mcp.md) —
   the API map, including the implemented query and operation catalogs
 - [The configurator example with the AI Planning Assistant chat](configurator-example-with-planning-assistant-chat.md)
   — the chat that asks the product questions

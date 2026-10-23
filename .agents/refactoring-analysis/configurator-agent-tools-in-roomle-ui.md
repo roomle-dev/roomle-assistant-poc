@@ -1,7 +1,7 @@
 # Move the configurator agent tools into roomle-ui
 
 > **Type:** Refactoring analysis
-> **Status:** Open
+> **Status:** Done
 > **Date:** 2026-10-23
 > **Base:** roomle-configurator-mcp `master` at `bcf7adacaca2bb97aa8a47d07e9f2a59719e7196`; roomle-ui `feat/configurator-mcp-api` at `e997a1726337d20aac24e6ae7ae176c092a1d51a`
 > **Analysis branch:** roomle-configurator-mcp `docs/configurator-agent-tools-refactoring`
@@ -10,6 +10,7 @@
 
 - **roomle-ui:** add the configurator agent tool set and prompts as lazy SDK modules, complete local operation/history results, and provide an embedding-lib adapter and assistant using the existing chat window and a shared agent loop.
 - **roomle-configurator-mcp:** become the standalone example and integration-test host; replace the Node MCP/chat stack and page bridge with the embedding-lib assistant, and migrate the tool tests and documentation to their owners.
+- **roomle-hi-example:** pin both browser imports and the setup references to the published embedding-lib alpha, as requested during implementation.
 
 ## Conclusion and scope
 
@@ -224,3 +225,110 @@ Documentation belongs with the new owners: add roomle-ui's configurator agent ar
 - Compared the actual source and tests at the three revisions above, including the requested planning-assistant overview and the HI agent architecture.
 - roomle-configurator-mcp baseline: **157 tests passed across 10 files** with Node `22.23.3`; typecheck, lint and formatting checks passed. The default Node `20.10.0` failed to load the installed Vite/Vitest configuration; the installed Node 22 runtime resolved that without dependency changes. HTTP/launcher tests require localhost binding outside the filesystem sandbox.
 - Markdown links and whitespace checks pass. Only this report and its two index entries are changed. Productive code, roomle-ui and roomle-hi-example are unchanged. SDK/embedding implementation tests, browser behavior and bundle-size claims remain future verification work.
+
+## Implementation finding: configuration replacement
+
+The browser parity run found that the existing SDK `loadConfiguration` operation called the
+public full-startup loader. In a standalone configurator this cleared history; in planner
+isolation it did not complete within 45 seconds. The other native operations and undo/redo
+completed in both contexts. The tool description's promised history step therefore did not
+match the full-startup path.
+
+The operation should replace the active configuration through the scene manager's existing
+reload path, the same completion path used by native undo/redo. Its planner override already
+updates the isolated plan object. This keeps the operation on its captured target and records
+the replacement in native history without adding a timer, queue or readiness mechanism. The
+public full-startup `RoomleConfigurator.loadConfiguration` API stays unchanged. Unit tests must
+verify the selected path and awaited completion; browser checks must replace and undo/redo in
+standalone and isolation contexts before publication.
+
+## Refactoring report
+
+The implementation is on roomle-ui `feat/configurator-mcp-api`, this repository's
+`feat/configurator-agent-in-roomle-ui`, and roomle-hi-example `chore/embedding-lib-alpha`.
+The analysis is retained until the implementation reaches every affected default branch.
+
+### Changes and ownership
+
+- roomle-ui extracted the neutral validation, tool adapter, model loader and browser turn loop,
+  preserving the public HI adapters. Its configurator SDK now owns the sixteen tools, schemas,
+  descriptions, annotations and prompts, cached on demand per instance with retry after failed
+  initialization. Native operations report authoritative history outcomes inside the existing
+  operation chain. Configuration replacement uses the active scene's reload completion, including
+  the planner isolation override, and retains normal undo history.
+- The optional embedding entry exports `createConfiguratorMcpTools` and
+  `startConfiguratorPlanningAssistant`, with separate tool/window endpoints. The configurator
+  retains recovery summaries and its five-minute deadline, with no automatic replay of uncertain
+  writes. The shared loop keeps completed tool messages and a sixteen-step budget.
+- This repository replaced the browser bridge and Node agent with the embedding assistant and a
+  static launcher. It removed the MCP/chat workspace, HTTP/WebSocket transport, duplicate history
+  correlation, child-process startup, stream parser, transport tests and their dependencies. Its
+  clean lockfile contains only the example workspace and development formatting/lint tooling.
+- roomle-hi-example pins both browser imports to the verified published alpha `9.0.0-alpha.5` in
+  commit `2392d87`. The configurator example pins the dev build `0.0.0-dev-9d077e2` from roomle-ui
+  `9d077e222fb59ac4c6f8b4ee248431a88b575c9c`. The [dev release workflow](https://github.com/roomle-dev/roomle-ui/actions/runs/39996201679)
+  published with the `dev` tag, verified in npm metadata; it did not deploy the UI or change
+  `alpha`/`latest`. The example uses the exact published files on jsDelivr.
+
+The principal new files in roomle-ui are `common-core/src/agent-tools/`,
+`configurator-core/src/configurator-mcp/`, embedding-lib `src/planning-assistant/`,
+`src/configurator-agent/` and `src/configurator.ts`, with adjacent SDK and embedding tests. Public
+methods are on `RoomleConfigurator`; existing embedding message namespaces forward them. Build
+entries, package exports, declarations and aliases include the optional configurator entry.
+This repository's remaining runtime files are `minimal-configurator-example/index.html` and
+`start.mjs`, with Node launcher tests under `minimal-configurator-example/tests/`.
+
+### Before and after
+
+| Boundary | Before | After |
+|---|---|---|
+| Agent | Node chat process and MCP client | Shared browser loop in the embedding-lib |
+| Tool ownership | Separate MCP server registrations and executors | Lazy native SDK registry and prompts |
+| Tool transport | HTTP MCP, WebSocket bridge, embedding messages | Existing embedding messages |
+| History confirmation | Relayed events and remote timeout/counter state | Authoritative native history snapshot after operation completion |
+| Configuration replacement | Full-startup loader reset standalone history and stalled in isolation | Active scene reload, with native undo and isolation preserved |
+| Example startup | Static page, MCP and chat processes, build gate | One static process and local model config |
+| External MCP applications | Inbound `/mcp` endpoint | No external endpoint; a separately requested relay would be a separate integration |
+
+### Verification and test adaptations
+
+- The full SDK suite passed **3,312 tests**, with 24 skipped, using four workers. Migrated direct
+  tool tests cover all sixteen mappings, schemas, metadata, normalization, partial capabilities,
+  failures and native history. New SDK tests cover per-instance lazy initialization/retry,
+  unchanged writes, committed hashes, asynchronous completion and configuration replacement.
+- The embedding/bridge/HI suite passed **109 tests**, with one skipped. It includes a real AI SDK
+  mock-model turn, error feedback delivered to the next model step, both namespaces, separate
+  isolation endpoints, complete history, interruption recovery, the deadline and final step policy.
+- Launcher tests passed in both example repositories (**three each**). A clean configurator
+  `npm ci`, lint, formatting and the repository-wide Markdown link check passed.
+- Chromium checked actual USM configuration reads, component/global changes, no-ops, dock, drag,
+  delete, configuration replacement, undo/redo and non-agent edits. The same mutation sequence
+  completed in planner isolation, including undo after replacement. Two simultaneous browser
+  instances retained separate configurations. Before discovery, the ordinary configurator made no
+  requests for the native agent registry or its zod dependency through this feature.
+- A final Chromium run loaded the example's actual published CDN imports without rewriting them,
+  discovered all sixteen tools through `createConfiguratorMcpTools`, read the configuration and
+  parameters, confirmed a global edit and undid it. Tools-only use loaded no AI/provider SDK.
+- The embedding production build passed, including `configurator.js`, its minified entry and
+  declarations. The main minified bundle remains **15.84 kB**, below its 16 kB limit. Formatting,
+  UI/SDK/embedding types and code lint passed. TypeDoc still reports **22 existing warnings** and
+  exits unsuccessfully; the same warnings were reproduced on the untouched branch base with the
+  same installed dependencies.
+
+### Durable documentation and limits
+
+The ownership decision is [ADR 0002](../decisions/0002-configurator-tools-run-in-the-sdk.md).
+The [implementation context](../context/configurator-example-with-planning-assistant-chat.md),
+[capability contract](../context/get-configurator-capabilities.md),
+[API map](../wiki/roomle-configurator-api-for-mcp.md),
+[integration skill](../skills/configurator-assistant.md) and
+[external guide](../../docs/configurator-assistant.md) describe the result. roomle-ui owns the
+native agent guideline and embedding integration guide; its HI architecture references name the
+shared implementation. Detailed capability and API tables remain available here.
+
+The iframe still requires a deployment containing the new SDK methods. Use the local
+`feat/configurator-mcp-api` UI with the dev embedding version until that deployment exists.
+Provider calls with a real API key were not run; model behavior is covered by mock-model tests.
+There is no automatic HI/native conversation switching, external MCP relay, or production
+credential proxy. Browser-held provider keys remain visible to the host. No before/after latency
+benchmark or provider speed improvement is claimed.
