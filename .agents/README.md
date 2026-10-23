@@ -111,6 +111,7 @@ done. The analysis and the report are the same document — the report is append
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Move the configurator agent tools into roomle-ui](refactoring-analysis/configurator-agent-tools-in-roomle-ui.md) | Open — lazy SDK tools, shared embedding assistant, and example/transport refactoring | 2026-10-23 |
 
 ### Benchmarks
 
