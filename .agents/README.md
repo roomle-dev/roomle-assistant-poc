@@ -103,6 +103,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Roomle UI entry points and a native configurator assistant](feature-analysis/roomle-ui-entry-points-and-native-assistant.md) | Open — verified local/BO entry points and direct UI integration feasibility | 2026-10-24 |
 | [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-19 |
 
 ### Refactoring Analyses

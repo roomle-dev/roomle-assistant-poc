@@ -36,6 +36,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
+| [roomle-ui-entry-points-and-native-assistant.md](roomle-ui-entry-points-and-native-assistant.md) | Open | Local and BO HTML entry points, verified deployment, and native assistant integration in the existing UI |
 | [query-and-execute-configuration-operation.md](query-and-execute-configuration-operation.md) | Open | The two generic roomle-ui APIs the MCP tools are built on: `queryConfigurationOperation` and `executeConfigurationOperation` |
 
 Add feature analysis documents as needed following the naming convention:
