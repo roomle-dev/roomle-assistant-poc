@@ -17,10 +17,15 @@ Each download uses a Blob URL that is revoked after the click. The export fields
 disabled until loading completes, and loading/export failures appear in the status element.
 The planner UI owns construction data and export generation.
 
-`start.mjs` is a dependency-free, loopback-only launcher. It serves only `/` and
+`start.mjs` is a dependency-free, loopback-only launcher. It serves the page at `/` and
 `/index.html`, uses port 3001 (`EXAMPLE_PORT` overrides it), and opens the page unless
 `--no-open` is passed. `--dev` sets `overrideServerUrl` to localhost:5173;
-`EXAMPLE_SERVER_URL` takes precedence. It serves no model credentials or assistant.
+`EXAMPLE_SERVER_URL` takes precedence. With model/key arguments it adds chat=true and serves a Host-checked, loopback-only,
+no-store model endpoint. The page fetches that configuration before creating the planner,
+sets both planningAssistant and fence flags, and supplies apiKey/planningAiModel through
+init data. The planner UI owns assistant startup; the page runs no second agent.
+The model key never appears in the generated URL. OPENAI_API_KEY supplies an optional
+environment fallback when a model is explicitly selected.
 The root scripts are `start:fence` and `dev:fence`; the workspace also supports
 `npm start` and `npm run dev` directly.
 
@@ -32,3 +37,5 @@ exercise HTTP serving, inaccessible paths, shutdown and UI deployment selection.
 
 See the [example guide](../../minimla-fence-example/README.md) and roomle-ui's
 [minimum fence example](https://github.com/roomle-dev/roomle-ui/tree/master/packages/embedding-lib/docs/minimum-fence-example).
+
+The [Fence Assistant overview](../../docs/fence-assistant-overview.md) describes lazy SDK ownership, native dependencies, terrain units/history and conservative pending construction results.

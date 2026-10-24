@@ -77,6 +77,25 @@
         const configuratorId = options.configuratorId ?? 'biohort_fence';
         delete options.id;
         delete options.configuratorId;
+        const chat = options.chat === 'true';
+        delete options.chat;
+        if (chat) {
+          const response = await fetch('/planning-assistant-config.json', {
+            cache: 'no-store',
+          });
+          if (!response.ok)
+            throw new Error(
+              'Start the example with a model and API key to use the Fence Assistant.'
+            );
+          const config = await response.json();
+          if (!config.apiKey?.trim())
+            throw new Error(
+              'The Fence Assistant requires a non-empty API key.'
+            );
+          options.apiKey = config.apiKey.trim();
+          options.planningAiModel = config.model;
+          options.featureFlags = { planningAssistant: true, fence: true };
+        }
         options.catalogRootTag ??= 'biohort_fence_root';
         const instance = await RoomleConfiguratorApi.createPlanner(
           configuratorId,

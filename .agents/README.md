@@ -64,8 +64,9 @@ each feature works today. The index is [the feature index](context/README.md).
 
 | Feature | Covers |
 |---|---|
+| [Fence Assistant](../docs/fence-assistant-overview.md) | Lazy terrain tools, automatic activation, native dependency and completion limits |
 | [Configuration Assistant architecture](context/configurator-assistant-architecture.md) | Components, roles, channels, startup, prompt round trip, messages, recovery, state and tests |
-| [Minimal fence example](context/minimal-fence-example.md) | Biohort planner defaults, construction exports, launcher and tests |
+| [Minimal fence example](context/minimal-fence-example.md) | Biohort planner defaults, UI-managed Fence Assistant, exports, launcher and tests |
 | [The configurator example with the AI Configuration Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
 | [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Native operation API overview, shared lifecycle, context and source map |
 | [queryConfigurationOperation](context/query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |
@@ -106,6 +107,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Fence Assistant: terrain generation, loading and manipulation](feature-analysis/fence-assistant-terrain.md) | Implemented — lazy terrain tools, minimal native primitives and exact activation; awaiting cross-repository landing | 2026-10-24 |
 | [Roomle UI entry points and a native configurator assistant](feature-analysis/roomle-ui-entry-points-and-native-assistant.md) | Open — direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented | 2026-10-24 |
 | [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-19 |
 

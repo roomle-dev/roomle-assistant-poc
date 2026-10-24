@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { get } from 'node:http';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -83,5 +84,38 @@ test(
       url.searchParams.get('overrideServerUrl'),
       'https://www.roomle.com/t/bo-dev/'
     );
+  }
+);
+
+test(
+  'serves credentials only through the local no-store endpoint and keeps them out of URLs',
+  { timeout: 10000 },
+  async (context) => {
+    const { url } = await startLauncher(
+      context,
+      ['gpt-6-luna', 'fence-test-key'],
+      ''
+    );
+    assert.equal(url.searchParams.get('chat'), 'true');
+    assert.equal(url.href.includes('fence-test-key'), false);
+    const response = await fetch(
+      new URL('/planning-assistant-config.json', url)
+    );
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), {
+      model: 'gpt-6-luna',
+      apiKey: 'fence-test-key',
+    });
+    const status = await new Promise((resolve, reject) => {
+      get(
+        new URL('/planning-assistant-config.json', url),
+        { headers: { Host: 'attacker.invalid' } },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode);
+        }
+      ).on('error', reject);
+    });
+    assert.equal(status, 403);
   }
 );
