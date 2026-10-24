@@ -106,6 +106,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
+| [Fence Assistant: terrain generation, loading and manipulation](feature-analysis/fence-assistant-terrain.md) | Open — terrain APIs, tools, lazy architecture and activation requirements | 2026-10-24 |
 | [Roomle UI entry points and a native configurator assistant](feature-analysis/roomle-ui-entry-points-and-native-assistant.md) | Open — direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented | 2026-10-24 |
 | [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-19 |
 
