@@ -14,6 +14,7 @@ Feature questions whose work has not landed keep their analysis in
 | Feature | Document | Covers |
 |---|---|---|
 | Configuration Assistant architecture | [configurator-assistant-architecture.md](configurator-assistant-architecture.md) | Components, roles, channels, startup, prompt round trip, messages, recovery, state and tests |
+| Minimal fence example | [minimal-fence-example.md](minimal-fence-example.md) | Biohort planner defaults, construction exports, launcher and tests |
 | The configurator example with the AI Configuration Assistant chat | [configurator-example-with-planning-assistant-chat.md](configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
 | The roomle-ui configurator API for agent tools | [roomle-configurator-api-for-mcp.md](roomle-configurator-api-for-mcp.md) | Native operation API overview, shared lifecycle, context and source map |
 | queryConfigurationOperation | [query-configuration-operation.md](query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |

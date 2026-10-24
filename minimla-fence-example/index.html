@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Minimal Fence Example</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html,
+      body,
+      #rubens-planner {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #rubens-planner iframe {
+        border: none;
+      }
+      #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        padding: 0.5rem;
+        background: white;
+        font-family: sans-serif;
+      }
+      #actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="top-bar">
+      <fieldset id="actions" disabled aria-label="Fence exports">
+        <button id="construction-overview">Construction overview (JSON)</button>
+        <button id="construction-bom">Bill of materials (JSON)</button>
+        <button id="elevation-plan">2D plans (floor + elevations)</button>
+      </fieldset>
+      <div id="status" role="status">Loading fence planner…</div>
+    </div>
+    <div id="rubens-planner"></div>
+
+    <script type="module">
+      import RoomleConfiguratorApi from 'https://cdn.jsdelivr.net/npm/@roomle/embedding-lib@0.0.0-dev-9d077e2/roomle-embedding-lib.js';
+
+      const download = (filename, content, type) => {
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      };
+      const status = document.getElementById('status');
+      const onExport = (id, action) => {
+        document.getElementById(id).addEventListener('click', async () => {
+          status.textContent = '';
+          try {
+            await action();
+          } catch (error) {
+            status.textContent = error.message;
+          }
+        });
+      };
+
+      try {
+        const options = Object.fromEntries(
+          new URLSearchParams(window.location.search)
+        );
+        const id = options.id ?? 'ps_mpzobaibjtz9034jbpurb6t98fab0w8';
+        const configuratorId = options.configuratorId ?? 'biohort_fence';
+        delete options.id;
+        delete options.configuratorId;
+        options.catalogRootTag ??= 'biohort_fence_root';
+        const instance = await RoomleConfiguratorApi.createPlanner(
+          configuratorId,
+          document.getElementById('rubens-planner'),
+          options
+        );
+        await instance.ui.loadObject(id);
+        window.instance = instance;
+
+        onExport('construction-overview', async () => {
+          const overview = await instance.extended.getConstructionOverview();
+          download(
+            'construction-overview.json',
+            JSON.stringify(overview, null, 2),
+            'application/json'
+          );
+        });
+        onExport('construction-bom', async () => {
+          const { parts } = await instance.extended.getConstructionOverview();
+          download(
+            'construction-bom.json',
+            JSON.stringify(parts.fullList, null, 2),
+            'application/json'
+          );
+        });
+        onExport('elevation-plan', async () => {
+          const { plans } = await instance.extended.create2DElevationPlan();
+          let elevationCount = 0;
+          for (const { planSvg, viewType } of plans) {
+            const filename =
+              viewType?.value === 0
+                ? 'roomle-floor-plan.svg'
+                : `roomle-elevation-plan-${++elevationCount}.svg`;
+            download(filename, planSvg, 'image/svg+xml');
+          }
+        });
+        document.getElementById('actions').disabled = false;
+        status.textContent = '';
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    </script>
+  </body>
+</html>

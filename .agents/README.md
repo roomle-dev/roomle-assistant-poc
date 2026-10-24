@@ -65,6 +65,7 @@ each feature works today. The index is [the feature index](context/README.md).
 | Feature | Covers |
 |---|---|
 | [Configuration Assistant architecture](context/configurator-assistant-architecture.md) | Components, roles, channels, startup, prompt round trip, messages, recovery, state and tests |
+| [Minimal fence example](context/minimal-fence-example.md) | Biohort planner defaults, construction exports, launcher and tests |
 | [The configurator example with the AI Configuration Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
 | [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Native operation API overview, shared lifecycle, context and source map |
 | [queryConfigurationOperation](context/query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |
@@ -83,6 +84,7 @@ indexed by [docs/README.md](../docs/README.md):
 
 - [configuration-assistant-overview.md](../docs/configuration-assistant-overview.md) — Components, diagram, request walkthrough, native undo, privacy and limits
 - [configurator-assistant.md](../docs/configurator-assistant.md) — Browser assistant, tools, providers and compatibility
+- [Minimal fence example](../minimla-fence-example/README.md) — Run the Biohort planner and download construction JSON and SVG plans
 
 ---
 

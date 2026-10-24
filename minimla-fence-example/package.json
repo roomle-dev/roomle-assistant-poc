@@ -1,0 +1,12 @@
+{
+  "name": "minimla-fence-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal Biohort fence planner with JSON and SVG exports",
+  "scripts": {
+    "start": "node start.mjs",
+    "dev": "node start.mjs --dev",
+    "test": "node --test tests/*.test.js"
+  }
+}
