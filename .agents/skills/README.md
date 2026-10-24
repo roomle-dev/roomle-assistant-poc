@@ -18,7 +18,7 @@ On-demand domain knowledge — procedures an agent loads when the task matches t
 
 | Skill | Description | Load when |
 |---|---|---|
-| [`configurator-mcp-server`](configurator-mcp-server.md) | The MCP server, its tools, the page bridge, the chat backend, how a tool is added and tested | MCP server or chat development, adding a tool, the example page's MCP and chat code |
+| [`configurator-assistant`](configurator-assistant.md) | Browser assistant, SDK integration and static launcher | Assistant integration and launcher development |
 
 ## Adding a New Skill
 
