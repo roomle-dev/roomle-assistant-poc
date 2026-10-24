@@ -5,12 +5,15 @@
   "type": "module",
   "description": "Standalone native configurator example with the browser planning assistant of roomle-ui",
   "workspaces": [
-    "minimal-configurator-example"
+    "minimal-configurator-example",
+    "minimla-fence-example"
   ],
   "scripts": {
     "start": "node minimal-configurator-example/start.mjs",
     "dev": "node minimal-configurator-example/start.mjs --dev",
-    "test": "npm test --workspace minimal-configurator-example",
+    "start:fence": "node minimla-fence-example/start.mjs",
+    "dev:fence": "node minimla-fence-example/start.mjs --dev",
+    "test": "npm test --workspaces",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "oxlint",

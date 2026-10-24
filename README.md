@@ -19,4 +19,8 @@ The key is served only to the local page and remains visible in the browser. It 
 
 ## Development
 
-`npm test` runs Node launcher tests. `npm run lint` and `npm run format:check` check source. Tool and assistant tests live in roomle-ui. See [agent context](.agents/README.md).
+The [minimal fence example](minimla-fence-example/README.md) embeds the Biohort fence planner
+with construction overview, bill of materials and floor/elevation SVG exports. Run
+`npm run start:fence` for <http://localhost:3001/> or `npm run dev:fence` for the local roomle-ui.
+
+`npm test` runs both examples' page and launcher tests. `npm run lint` and `npm run format:check` check source. Tool and assistant tests live in roomle-ui. See [agent context](.agents/README.md).
