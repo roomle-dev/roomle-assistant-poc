@@ -33,9 +33,11 @@
       const options = Object.fromEntries(new URLSearchParams(location.search));
       const id = options.id ?? 'usm:frame';
       const chat = options.chat === 'true';
+      const assistantModuleUrl = options.assistantModuleUrl;
       delete options.id;
       delete options.chat;
-      if (chat) options.featureFlags = { planningAssistant: true };
+      delete options.assistantModuleUrl;
+      if (chat) options.featureFlags = { configurationAssistant: true };
       const instance = await RoomleConfiguratorApi.createConfigurator(
         'demoConfigurator',
         document.getElementById('rubens-configurator'),
@@ -54,9 +56,16 @@
             throw new Error(
               'Start the example with npm start <model> <api-key>.'
             );
-          await startConfiguratorPlanningAssistant(
+          const config = await response.json();
+          if (!config.apiKey?.trim())
+            throw new Error('An API key is required to start the assistant.');
+          const startAssistant = assistantModuleUrl
+            ? (await import(assistantModuleUrl))
+                .startConfiguratorPlanningAssistant
+            : startConfiguratorPlanningAssistant;
+          await startAssistant(
             { configurator: instance.extended, window: instance.extended },
-            await response.json(),
+            config,
             controller.signal
           );
         } catch (error) {

@@ -1,13 +1,13 @@
 # Roomle UI entry points and a native configurator assistant
 
-Status: Open — feasibility established; direct UI integration is not implemented
+Status: Open — direct UI startup remains outside the implemented scope
 Date: 2026-10-24
 Ticket: None supplied
 
 ## Affected repositories
 
-- **roomle-ui** — proposed standalone assistant startup using the existing configurator SDK and chat window; deployment must include the native agent API.
-- **roomle-configurator-mcp** — this analysis and its indexes; the example remains the reference for embedded integration.
+- **roomle-ui** — a separate configuration feature flag, the configuration chat title and the OpenAI provider in the existing model loader.
+- **roomle-configurator-mcp** — the example uses the configuration flag and rejects blank keys; integration documentation, tests and this analysis track the contract.
 
 RoomleCore requires no kernel change for this integration.
 
@@ -18,6 +18,9 @@ Identify the HTML loaded by `npm run dev` at `http://localhost:5173/` and by
 `minimal-configurator-example/index.html` can run there directly.
 
 ## How the area works today
+
+This section records the original investigation; deployment evidence is a snapshot. The
+implementation outcome below describes the smaller scope that was implemented.
 
 Code references beginning with `roomle-ui:` refer to the sibling repository. Current-checkout
 references describe branch `feat/attic-camera-facing-visibility-RML-14443`. Native agent references
@@ -131,3 +134,29 @@ prompt/output delivery, unchanged embedded-host callback ownership, and shared U
 history. A browser check should cover local Vite and a built subdirectory deployment. No
 application code or running server was changed in this analysis; HTTP and source inspection
 establish feasibility, not a completed runtime integration.
+
+## Implementation outcome
+
+Both repositories use branch `feat/configuration-assistant`. The MCP branch was created from
+`origin/master`, with the original analysis committed separately as `8317898`. The UI branch was
+created from `origin/feat/configurator-mcp-api` at `9d077e222`; the divergent local branch of that
+name was preserved.
+
+The configurator uses only `featureFlags.configurationAssistant`; the planner keeps
+`featureFlags.planningAssistant`. The configurator's title is **AI Configuration Assistant**;
+the planner retains its default title. Direct UI agent startup and the watcher-based approach
+were excluded from the final scope. The embedding host starts the agent.
+
+The example enables the new flag with `chat=true` and validates the model key. OpenAI model ids
+select the new provider; dev mode loads the local configurator helper. Its OpenAI provider uses
+the pinned jsDelivr ESM module and the Responses API. No provider-specific reasoning effort is
+required. The existing HI flow remains unchanged. Durable contracts live in
+the [assistant guide](../../docs/configurator-assistant.md),
+[implementation reference](../context/configurator-example-with-planning-assistant-chat.md) and
+roomle-ui's existing assistant guides and agent reference.
+
+Validation covered 89 configurator/chat/planner tests, 14 model/agent tests and 11 example/launcher
+tests. A browser check exercised the dev launcher with a dummy key, loaded the real provider and
+reached an enabled configuration chat with inference requests blocked. The user also confirmed
+that the OpenAI example worked. Direct UI startup was not implemented, so that feature question
+remains open. No deployment, package publication or pull request is part of this change.

@@ -99,6 +99,27 @@ const startLauncher = async (args) => {
 };
 
 describe('example launcher', { skip: process.platform === 'win32' }, () => {
+  for (const model of ['gpt-6.1-sol', 'gpt-6-luna', 'o3']) {
+    test(`serves OpenAI configuration for ${model} with the local dev helper`, async () => {
+      const example = await startLauncher(['--dev', model, 'test-openai-key']);
+      try {
+        const response = await example.fetchPath(
+          '/planning-assistant-config.json'
+        );
+        assert.deepEqual(await response.json(), {
+          provider: 'openai',
+          model,
+          apiKey: 'test-openai-key',
+          readsImages: false,
+        });
+        assert.ok(example.output().includes('assistantModuleUrl='));
+        assert.ok(!example.output().includes('test-openai-key'));
+      } finally {
+        example.kill();
+      }
+    });
+  }
+
   test(
     'serves the planning assistant config of the model to this machine',
     { timeout: 90_000 },
