@@ -13,6 +13,8 @@ const runExample = async ({
   loadError,
   exportError,
   plans = [],
+  config = { model: 'gpt-6-luna', apiKey: ' key ' },
+  configStatus = 200,
 } = {}) => {
   const calls = [];
   const downloads = [];
@@ -57,6 +59,7 @@ const runExample = async ({
   };
   const window = { location: { search } };
   await runInNewContext(`(async () => { ${script} })()`, {
+    fetch: async () => ({ ok: configStatus === 200, json: async () => config }),
     RoomleConfiguratorApi: {
       createPlanner: async (id, container, options) => {
         calls.push([
@@ -189,4 +192,24 @@ test('reports export failures without downloading invalid data', async () => {
   await elements.get('construction-overview').click();
   assert.equal(elements.get('status').textContent, 'Export unavailable');
   assert.equal(downloads.length, 0);
+});
+
+test('loads model configuration before planner initialization and lets the UI own the assistant', async () => {
+  const { calls } = await runExample({ search: '?chat=true' });
+  assert.deepEqual(calls[0][3], {
+    catalogRootTag: 'biohort_fence_root',
+    apiKey: 'key',
+    planningAiModel: 'gpt-6-luna',
+    featureFlags: { planningAssistant: true, fence: true },
+  });
+});
+test('fails visibly before creating a planner when chat configuration is unavailable or blank', async () => {
+  for (const options of [
+    { configStatus: 404 },
+    { config: { model: 'gpt-6-luna', apiKey: ' ' } },
+  ]) {
+    const result = await runExample({ search: '?chat=true', ...options });
+    assert.equal(result.calls.length, 0);
+    assert.match(result.elements.get('status').textContent, /API key/);
+  }
 });

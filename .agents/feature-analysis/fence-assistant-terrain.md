@@ -1,20 +1,41 @@
 # Fence Assistant: terrain generation, loading and manipulation
 
-**Status:** Open
+**Status:** Implemented — local branches; not pushed or landed
 
 **Date:** 2026-10-24
 
 **Ticket:** [RML-18302 — research fence assistant](https://roomle.atlassian.net/browse/RML-18302)
 
-**Scope:** Feature analysis; no productive code is changed.
+**Scope:** Feature analysis and implementation record. The terrain-focused implementation is complete on local branches. Nothing is pushed, published or deployed. Sections 1–18 retain the original investigation and proposed acceptance scope; section 19 records the delivered contract, checks and remaining limits.
 
 ## Affected repositories
 
-- **roomle-configurator-mcp:** this analysis and its indexes; the proposed implementation extends the minimal fence example with assistant startup and local model configuration.
-- **roomle-ui:** proposed planner operation APIs, lazy Fence Assistant tools and prompts, embedding adapter, automatic UI startup, existing chat integration and tests. The Web SDK and embedding library are packages of this repository.
-- **RoomleCore:** proposed interaction and binding additions for deterministic terrain construction, floor-specific corner heights, terrain topology reads and authoritative terrain sampling. Geometry, floor ownership and construction distribution remain kernel responsibilities.
+- **roomle-configurator-mcp:** this analysis and its indexes; the implementation extends the minimal fence example with assistant startup and local model configuration.
+- **roomle-ui:** planner operation APIs, lazy Fence Assistant tools and prompts, embedding adapter, automatic UI startup, existing chat integration and tests. The Web SDK and embedding library are packages of this repository.
+- **RoomleCore:** only missing terrain-contour and undo-aware corner-height primitives, plus thin bindings for existing model reads, sampling, curve knots and history. Context assembly, batches, splitting/removal orchestration and all assistant tools remain in lazy roomle-ui modules.
 
 roomle-hi-example is an architectural reference, not an implementation dependency. No HI library, HI callback setup or HI backend is required for native terrain planning.
+
+## Implementation boundary after scope review
+
+The implementation is UI first. Tool schemas, prompts, JSON terrain context, operation
+validation, split/removal orchestration and corner batches are dynamically imported
+TypeScript modules in roomle-ui. Ordinary planner startup imports no fence registry or
+model provider. Core supplies its existing terrain engine and two missing primitives:
+deterministic typed contour creation and an undo-aware independent corner setter.
+Thin bindings expose existing boundary nodes, effective heights, authoritative sampling,
+curve knots and history cursor/size. No native terrain DTO hierarchy, context assembler,
+split/removal APIs, batch-height API or AI registry is added.
+
+Synchronous edits use the existing interaction hold/release in one call stack and return
+a detached result before yielding. Native plan IDs identify replacement; JavaScript
+wrapper identity is not stable. Dependent construction completion is conservatively
+reported pending when potentially affected objects exist. The adapter does not invent
+an aggregate completion signal, wait on a timer, or claim every fence/BOM update finished.
+Native redistribution still runs. Adding a general producer batch-completion contract
+is separate from this terrain-focused version.
+
+The reviewed implementation plan is [Jira comment 156501](https://roomle.atlassian.net/browse/RML-18302?focusedCommentId=156501), updated with these boundaries.
 
 ## 1. Request and conclusions
 
@@ -32,7 +53,7 @@ The main findings are:
 6. **Reuse the assistant architecture.** Use the existing chat component/store, embedding messages, neutral tool adapter, provider loader and shared browser agent loop. Add the fence domain beside the configurator and HI domains.
 7. **Loading and editing have different history contracts.** Loading a plan replaces the plan/history. Creating or editing terrain inside an existing plan should make one ordinary planner undo step per successful operation; a no-op should make none.
 
-The suggested API and tool names below are proposals, not methods already implemented. Source observations and runtime observations are identified separately.
+The API/tool names and gaps in the investigation below describe the pre-implementation baseline. Section 19 and the living references describe the implemented surface. Source observations and runtime observations are identified separately.
 
 ## 2. Evidence and examined revisions
 
@@ -603,7 +624,7 @@ Known adjacent issues must remain visible in acceptance work: domain detection a
 | Add a separate fence-assistant feature flag | User-defined activation already has planningAssistant + fence + apiKey |
 | Build a new chat window or provider loop | Existing common UI and runtime already supply the architecture |
 
-These are feature-design comparisons, not adopted changes to existing ADRs. The analysis remains open for implementation review.
+These comparisons record the investigated alternatives. The UI-first implementation boundary above and the outcome below identify the selected approach.
 
 ## 15. Code and documentation the implementation would touch
 
@@ -625,13 +646,10 @@ This is an impact map, not an implementation-plan document.
 
 ### RoomleCore
 
-- `src/planner/interaction/plan-interaction-handler.{h,cpp}`: floor-corner setter and deterministic terrain authoring entry points.
-- Existing `AddElement`, drawing/intersection/floor-construction services: shared implementation of typed contour operations, without adding workflows back onto `Plan` (ADR 0065).
-- `src/planner/view/plan-model-view-helper.{h,cpp}` and DTOs, or minimal floor accessors: expose reliable terrain topology/heights and sampling without mesh-to-node guesses.
-- `src/planner/interaction/elements-in-interaction.cpp`: only if a new mutation cannot express affected nodes/floors through existing registration; keep redistribution in the existing lifecycle.
-- `interfaces/emscripten/definition/planner.json`: source of new bindings; regenerate TypeScript/embind/documentation outputs rather than editing generated files.
-- Relevant floor, terrain, interaction, history and construction tests; shared test plans in `test/test-helper/` where appropriate.
-- Living reference: terrain generation, floor levels, interaction/history; resolve the corner-editing backlog item when its implementation lands.
+- The interaction handler delegates deterministic typed terrain contour creation to a small plan service and exposes the floor-specific corner setter.
+- Binding sources expose existing ordered nodes, corner heights, native surface sampling, curve knots and history state. Generated C++/TypeScript/reference outputs follow the generator.
+- Native and real WASM binding tests cover domain separation, slopes, concavity/winding, no-op/invalid edits and ordinary history.
+- Existing terrain-generation context and the remaining manual corner-control backlog are updated. Terrain context assembly and orchestration stay in roomle-ui.
 
 ### roomle-configurator-mcp
 
@@ -674,6 +692,98 @@ Existing kernel tests that ground the work include `test/planner/geometry/terrai
 
 ## 18. Analysis deliverable and validation boundary
 
-This document records the source trace, runtime evidence, missing API surface, proposed contracts, assistant architecture, alternatives, dependencies and acceptance tests. It is the feature analysis requested for RML-18302. Only this document and its indexes belong to the analysis branch; productive code remains unchanged.
+This document records the source trace, runtime evidence, missing API surface, proposed contracts, assistant architecture, alternatives, dependencies and acceptance tests. It is the feature analysis requested for RML-18302. The analysis is retained while the implementation is reviewed on local branches. Durable API and integration behavior is documented in living reference.
 
-The browser probe verifies the existing deployed height setter and undo/redo. Static source inspection establishes the newer floor-corner model and missing public interfaces. The proposed APIs, automatic fence startup and tools remain to be implemented and validated against a compatible local UI/kernel build.
+The browser probe verifies the existing deployed height setter and undo/redo. Static source inspection establishes the newer floor-corner model and missing public interfaces. The implementation record below distinguishes validation of the local UI/kernel build from the original deployed-browser evidence.
+
+## 19. Local implementation outcome
+
+### Delivered behavior
+
+The planner now exposes five lazy public methods: `queryFenceOperation`,
+`executeFenceOperation`, `getFenceAgentTools`, `callFenceAgentTool` and
+`getFenceAgentPrompts`. Fifteen tools provide four terrain reads and eleven writes,
+including plan loading, contour creation, XY/shared-node/corner/level edits, splitting,
+materials, scoped removal and ordinary undo/redo. Context is detached JSON with live
+runtime IDs, ordered corners, shared-node incidence, curves and coordinate units.
+The SDK disposes caller-owned native handles.
+
+Schemas, prompts, DTO assembly, validation and orchestration are dynamic roomle-ui
+modules. The optional embedding fence entry reuses the existing provider/agent loop,
+chat messages and interrupted-turn recovery. Automatic startup requires exactly both
+flags and a non-empty trimmed key, uses `planningAiModel` (default `gpt-6-luna`),
+registers after callbacks and aborts on page hide. No HI dependency is introduced.
+
+Core adds only typed terrain contour creation and an undo-aware per-floor corner setter,
+plus thin bindings to existing boundary nodes, effective heights, native sampling,
+curve knots and history. It adds no native assistant registry, terrain DTO assembler,
+split/removal API or batch setter. Coincident construction and terrain nodes remain in
+separate domains. Existing native geometry and dependent construction distribution run
+through the normal planner lifecycle.
+
+Edits finish synchronous mutation/history and capture their result in one call stack.
+Batches make one ordinary history step, no-ops make none, and plan loading replaces
+history. Native plan IDs detect replacement. Material changes are scoped to intended
+created patches; removal protects unselected boundaries and construction objects.
+
+The example fetches loopback model configuration before planner creation and enables
+UI-managed startup. It places no key in the URL and starts no second host agent.
+Its existing catalog, snapshot and export controls remain usable.
+
+### Local revisions and durable documentation
+
+All affected repositories use `feat/fence-assistant-terrain`:
+
+| Repository | Local revision / base |
+|---|---|
+| RoomleCore | `2e0d27a25` — minimal primitives and bindings, native/WASM tests and terrain reference; based on the existing floor-height revision `2be086b028420e5ff4fb0ac6b08d87161aa5846c` |
+| roomle-ui | `ed377dd19` — mechanical shared-recovery move; `7dd765ceb` — lazy terrain tools, operations, activation, adapter, tests and documentation; based on `feat/configuration-assistant` at `d8a3693a0e2548602aefde42ca6596cbe89de3cb` |
+| roomle-configurator-mcp | This branch's example and documentation commit, based on analysis revision `e2db102` |
+
+Durable behavior is documented in RoomleCore's
+`.agents/context/fence/terrain-generation.md`, roomle-ui's
+`packages/web-sdk/packages/planner-core/docs/fence-operations.md` and
+`packages/embedding-lib/docs/fence-assistant-overview.md`, and this repository's
+[Fence Assistant overview](../../docs/fence-assistant-overview.md) and
+[minimal-example context](../context/minimal-fence-example.md).
+The [existing Jira plan](https://roomle.atlassian.net/browse/RML-18302?focusedCommentId=156501)
+was adapted to the UI-first boundary. No new progress/completion comments were posted.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| Native Catch2 full suite | 2,814 cases passed |
+| Focused native terrain suite | 3 cases / 145 assertions passed; includes native fence placement, independent corners, domain separation and undo/redo |
+| Real WASM terrain bindings | Passed; plain arrays, effective heights, sampling, knots and history |
+| Core Node regressions | 608 passed |
+| Core Node full unit suite | 72 passed; 2 failures in untouched `atticTest.ts`, reporting `Cannot convert "[object Object]" to int` through `EMSProxy::addAttic`; terrain bindings passed |
+| Web SDK full suite | 3,325 passed / 24 skipped |
+| UI full suite | 2,047 passed / 11 skipped |
+| Example suites | 24 passed across both examples |
+| Builds and types | Native/WASM, SDK, UI and optional embedding builds passed; built-SDK compatibility and packed-consumer strict type checks passed |
+| Source/document checks | Lint, format, whitespace and relative Markdown links passed; existing typedoc/unused-test-variable warnings remain |
+| Browser integration | Real local UI/Core: discovery, terrain edits/no-ops, split/material/removal, loading and history passed. Mock-model chat caused real native corner edits and undo on desktop and a fresh mobile launch; no paid model request was made |
+| Bundle boundaries | Operations, schemas, registry and prompts remain separate lazy chunks; optional fence entry stays separate from ordinary embedding startup |
+
+Build output, downloaded snapshot data, browser scripts/screenshots and logs are ignored
+scratch files. No binary, local dependency path or model credential is committed.
+
+### Explicit limits and landing
+
+A matching Core WASM/UI build is required; no package version is invented and no
+release is published. Older kernels report unsupported operations. Curved boundaries
+are readable; curve authoring, curved-patch splitting, arbitrary boundary insertion/
+removal, DEM import and fence-product authoring remain outside this terrain baseline.
+
+When potentially affected construction objects exist, results report
+`completion.construction: "pending"` and `confirmed: false`: no aggregate native
+batch-completion result exists. Terrain/history can be applied while dependent fence
+geometry/BOM completion remains unconfirmed. Native redistribution still runs; the
+assistant must not repeat the write. A general producer-completion contract remains
+separate work. Removing terrain retains existing native construction anchors; it does
+not imply an automatic reset of their Z coordinates.
+
+These commits have not landed on the default branches. Retain this analysis and its
+index entries until landing in every affected repository is verified, then close it
+out using the repository's analysis-closeout workflow.

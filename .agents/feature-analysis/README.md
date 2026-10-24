@@ -36,7 +36,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
-| [fence-assistant-terrain.md](fence-assistant-terrain.md) | Open | Detailed terrain model/API/tool analysis, lazy Fence Assistant architecture and activation through planningAssistant + fence + apiKey |
+| [fence-assistant-terrain.md](fence-assistant-terrain.md) | Implemented | Local terrain implementation and validation; retained until landing in all affected repositories |
 | [roomle-ui-entry-points-and-native-assistant.md](roomle-ui-entry-points-and-native-assistant.md) | Open | Direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented |
 | [query-and-execute-configuration-operation.md](query-and-execute-configuration-operation.md) | Open | The two generic roomle-ui APIs the MCP tools are built on: `queryConfigurationOperation` and `executeConfigurationOperation` |
 
