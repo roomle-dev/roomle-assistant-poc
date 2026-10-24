@@ -1,12 +1,12 @@
 # Fence Assistant: terrain generation, loading and manipulation
 
-**Status:** Implemented — local branches; not pushed or landed
+**Status:** Implemented — feature branches; not landed
 
 **Date:** 2026-10-24
 
 **Ticket:** [RML-18302 — research fence assistant](https://roomle.atlassian.net/browse/RML-18302)
 
-**Scope:** Feature analysis and implementation record. The terrain-focused implementation is complete on local branches. Nothing is pushed, published or deployed. Sections 1–18 retain the original investigation and proposed acceptance scope; section 19 records the delivered contract, checks and remaining limits.
+**Scope:** Feature analysis and implementation record. The terrain-focused implementation is complete on feature branches. This repository is prepared for pull-request review; the matching roomle-ui and RoomleCore changes remain local. No package is published and no implementation is deployed. Sections 1–18 retain the original investigation and proposed acceptance scope; section 19 records the delivered contract, checks and remaining limits.
 
 ## Affected repositories
 
@@ -692,11 +692,11 @@ Existing kernel tests that ground the work include `test/planner/geometry/terrai
 
 ## 18. Analysis deliverable and validation boundary
 
-This document records the source trace, runtime evidence, missing API surface, proposed contracts, assistant architecture, alternatives, dependencies and acceptance tests. It is the feature analysis requested for RML-18302. The analysis is retained while the implementation is reviewed on local branches. Durable API and integration behavior is documented in living reference.
+This document records the source trace, runtime evidence, missing API surface, proposed contracts, assistant architecture, alternatives, dependencies and acceptance tests. It is the feature analysis requested for RML-18302. The analysis is retained while the implementation is reviewed on feature branches. Durable API and integration behavior is documented in living reference.
 
 The browser probe verifies the existing deployed height setter and undo/redo. Static source inspection establishes the newer floor-corner model and missing public interfaces. The implementation record below distinguishes validation of the local UI/kernel build from the original deployed-browser evidence.
 
-## 19. Local implementation outcome
+## 19. Implementation outcome
 
 ### Delivered behavior
 
@@ -730,11 +730,11 @@ The example fetches loopback model configuration before planner creation and ena
 UI-managed startup. It places no key in the URL and starts no second host agent.
 Its existing catalog, snapshot and export controls remain usable.
 
-### Local revisions and durable documentation
+### Implementation revisions and durable documentation
 
 All affected repositories use `feat/fence-assistant-terrain`:
 
-| Repository | Local revision / base |
+| Repository | Implementation revision / base |
 |---|---|
 | RoomleCore | `2e0d27a25` — minimal primitives and bindings, native/WASM tests and terrain reference; based on the existing floor-height revision `2be086b028420e5ff4fb0ac6b08d87161aa5846c` |
 | roomle-ui | `ed377dd19` — mechanical shared-recovery move; `7dd765ceb` — lazy terrain tools, operations, activation, adapter, tests and documentation; based on `feat/configuration-assistant` at `d8a3693a0e2548602aefde42ca6596cbe89de3cb` |
