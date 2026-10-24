@@ -15,6 +15,7 @@ Each contract has one home; the other documents link to it.
 | Document | Owns |
 |---|---|
 | This overview | Embedding access, shared operation lifecycle, context and source locations |
+| [How the AI Configuration Assistant works](../../docs/configuration-assistant-overview.md) | External overview, component diagram and request walkthrough |
 | [Configuration Assistant architecture](configurator-assistant-architecture.md) | Agent runtime, chat/store, channels, startup, model loop, messages and recovery |
 | [queryConfigurationOperation](query-configuration-operation.md) | Query names, payloads, results, docking sources and read errors |
 | [executeConfigurationOperation](execute-configuration-operation.md) | Operation names, payloads, results, history outcomes and write errors |

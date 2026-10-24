@@ -105,7 +105,9 @@ The start script (`npm start`) provides:
 │   └── README.md                   # How to run the page, its URL parameters
 ├── docs/                           # Living reference for users and developers
 │   ├── README.md                   # Index of every document in docs/
-│   └── configurator-assistant.md   # Browser assistant usage and compatibility
+│   ├── configuration-assistant-overview.md # Components and request walkthrough
+│   ├── configurator-assistant.md   # Browser assistant usage and compatibility
+│   └── images/configuration-assistant-components.svg
 ├── package.json                    # start/dev/test/format/lint scripts
 ├── README.md                       # Quickstart and usage guide
 ├── AGENTS.md                       # This file - AI assistant instructions

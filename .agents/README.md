@@ -81,6 +81,7 @@ Source-code architecture and API contracts belong to [Context](#context). There 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
 indexed by [docs/README.md](../docs/README.md):
 
+- [configuration-assistant-overview.md](../docs/configuration-assistant-overview.md) — Components, diagram, request walkthrough, native undo, privacy and limits
 - [configurator-assistant.md](../docs/configurator-assistant.md) — Browser assistant, tools, providers and compatibility
 
 ---

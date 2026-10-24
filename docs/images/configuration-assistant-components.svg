@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1190" height="730" viewBox="0 0 1190 730" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="title description">
+  <title id="title">The components of the AI Configuration Assistant and how they interact</title>
+  <desc id="description">An embedded native configurator and its website run in the user's browser. Seven numbered interactions connect the user, chat window, browser agent, model provider, native tools, product configuration, RoomleCore and RAPI. The configurator fetches product data directly from RAPI.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#444"/>
+    </marker>
+  </defs>
+  <rect width="1190" height="730" fill="#ffffff"/>
+
+  <rect x="120" y="20" width="200" height="50" rx="25" fill="#f2f2f2" stroke="#666" stroke-width="1.5"/>
+  <text x="220" y="51" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">User</text>
+
+  <rect x="20" y="100" width="798" height="610" rx="14" fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="40" y="124" font-size="13" fill="#777">User's browser</text>
+
+  <rect x="40" y="136" width="380" height="560" rx="10" fill="#f4f8fd" stroke="#2f6db5" stroke-width="1.5"/>
+  <text x="56" y="160" font-size="15" font-weight="bold" fill="#1f4f8a">Roomle product configurator</text>
+  <text x="56" y="178" font-size="12" fill="#4a6f99">embedded in the website</text>
+
+  <rect x="60" y="196" width="340" height="64" rx="8" fill="#ffffff" stroke="#2f6db5" stroke-width="1.5"/>
+  <text x="230" y="223" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f4f8a">Chat window</text>
+  <text x="230" y="244" text-anchor="middle" font-size="12" fill="#333">AI Configuration Assistant</text>
+
+  <rect x="60" y="336" width="340" height="64" rx="8" fill="#ffffff" stroke="#2f6db5" stroke-width="1.5"/>
+  <text x="230" y="363" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f4f8a">Configuration tools</text>
+  <text x="230" y="384" text-anchor="middle" font-size="12" fill="#333">inspect, edit, dock, move, delete, undo and redo</text>
+
+  <rect x="60" y="470" width="340" height="72" rx="8" fill="#ffffff" stroke="#2f6db5" stroke-width="1.5"/>
+  <text x="230" y="497" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f4f8a">Product configuration</text>
+  <text x="230" y="517" text-anchor="middle" font-size="12" fill="#333">product data, operations and native history</text>
+
+  <rect x="60" y="610" width="340" height="64" rx="8" fill="#ffffff" stroke="#2f6db5" stroke-width="1.5"/>
+  <text x="230" y="637" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f4f8a">Configuration engine (RoomleCore)</text>
+  <text x="230" y="658" text-anchor="middle" font-size="12" fill="#333">parameter rules, geometry and valid docking</text>
+
+  <rect x="520" y="136" width="290" height="286" rx="10" fill="#f3faf5" stroke="#2e8b57" stroke-width="1.5"/>
+  <text x="536" y="160" font-size="15" font-weight="bold" fill="#1f6b40">Website (host page)</text>
+  <text x="536" y="178" font-size="12" fill="#3f7d58">the native example, a shop, ...</text>
+
+  <rect x="540" y="196" width="250" height="204" rx="8" fill="#ffffff" stroke="#2e8b57" stroke-width="1.5"/>
+  <text x="665" y="252" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f6b40">Configuration assistant</text>
+  <text x="665" y="273" text-anchor="middle" font-size="12" fill="#333">the AI agent</text>
+  <text x="665" y="302" text-anchor="middle" font-size="12" fill="#333">keeps the conversation,</text>
+  <text x="665" y="319" text-anchor="middle" font-size="12" fill="#333">holds the model and the key</text>
+  <text x="665" y="345" text-anchor="middle" font-size="12" font-style="italic" fill="#666">part of the Roomle</text>
+  <text x="665" y="360" text-anchor="middle" font-size="12" font-style="italic" fill="#666">embedding library</text>
+
+  <text x="1035" y="205" text-anchor="middle" font-size="13" fill="#8a5a1c">Services on the internet</text>
+
+  <rect x="910" y="228" width="250" height="110" rx="10" fill="#fdf3e6" stroke="#c8761c" stroke-width="1.5"/>
+  <text x="1035" y="261" text-anchor="middle" font-size="15" font-weight="bold" fill="#8a4f10">AI model</text>
+  <text x="1035" y="283" text-anchor="middle" font-size="12" fill="#333">at the provider the website chose</text>
+  <text x="1035" y="305" text-anchor="middle" font-size="12" fill="#333">OpenAI · Azure OpenAI</text>
+  <text x="1035" y="321" text-anchor="middle" font-size="12" fill="#333">Mistral · Anthropic · Google</text>
+
+  <rect x="910" y="470" width="250" height="72" rx="10" fill="#fdf3e6" stroke="#c8761c" stroke-width="1.5"/>
+  <text x="1035" y="497" text-anchor="middle" font-size="15" font-weight="bold" fill="#8a4f10">Product data (RAPI)</text>
+  <text x="1035" y="517" text-anchor="middle" font-size="12" fill="#333">components, items, materials</text>
+
+  <g stroke="#444" stroke-width="1.6" fill="none">
+    <line x1="220" y1="72" x2="220" y2="194" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <line x1="402" y1="216" x2="538" y2="216" marker-end="url(#arrow)"/>
+    <line x1="538" y1="244" x2="402" y2="244" marker-end="url(#arrow)"/>
+    <line x1="792" y1="262" x2="908" y2="262" marker-end="url(#arrow)"/>
+    <line x1="908" y1="304" x2="792" y2="304" marker-end="url(#arrow)"/>
+    <line x1="538" y1="356" x2="402" y2="356" marker-end="url(#arrow)"/>
+    <line x1="402" y1="384" x2="538" y2="384" marker-end="url(#arrow)"/>
+    <line x1="120" y1="402" x2="120" y2="468" marker-end="url(#arrow)"/>
+    <line x1="150" y1="468" x2="150" y2="402" marker-end="url(#arrow)"/>
+    <line x1="135" y1="544" x2="135" y2="608" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <line x1="402" y1="506" x2="908" y2="506" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  </g>
+
+  <g font-size="11" fill="#444">
+    <text x="236" y="90">asks in words or by voice</text>
+    <text x="470" y="208" text-anchor="middle">prompt</text>
+    <text x="470" y="262" text-anchor="middle">answer, status</text>
+    <text x="864" y="254" text-anchor="middle">request, tools</text>
+    <text x="864" y="322" text-anchor="middle">text, tool calls</text>
+    <text x="470" y="348" text-anchor="middle">tool call</text>
+    <text x="470" y="402" text-anchor="middle">result</text>
+    <text x="164" y="440">reads and changes the product</text>
+    <text x="150" y="590">evaluates rules, updates the product</text>
+    <text x="665" y="496" text-anchor="middle">fetches product definitions and metadata</text>
+  </g>
+
+  <g font-size="12" font-weight="bold" text-anchor="middle">
+    <circle cx="220" cy="118" r="11" fill="#333"/><text x="220" y="122" fill="#fff">1</text>
+    <circle cx="470" cy="230" r="11" fill="#333"/><text x="470" y="234" fill="#fff">2</text>
+    <circle cx="864" cy="283" r="11" fill="#333"/><text x="864" y="287" fill="#fff">3</text>
+    <circle cx="470" cy="370" r="11" fill="#333"/><text x="470" y="374" fill="#fff">4</text>
+    <circle cx="135" cy="435" r="11" fill="#333"/><text x="135" y="439" fill="#fff">5</text>
+    <circle cx="135" cy="576" r="11" fill="#333"/><text x="135" y="580" fill="#fff">6</text>
+    <circle cx="665" cy="524" r="11" fill="#333"/><text x="665" y="528" fill="#fff">7</text>
+  </g>
+</svg>

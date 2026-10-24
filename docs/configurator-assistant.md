@@ -5,6 +5,9 @@ This example embeds a native Roomle product configurator and uses the browser as
 selects the model, keeps the conversation and runs the agent loop. The tools inspect and edit the
 same live configuration that the user sees.
 
+For a component diagram and a request walkthrough, see
+[How the AI Configuration Assistant works](configuration-assistant-overview.md).
+
 With `chat=true` the example sets `featureFlags.configurationAssistant=true`, which exposes the
 **AI Configuration Assistant** in configurator mode. `planningAssistant` is reserved for planner
 mode and does not enable configurator chat. The embedding host starts the agent; embedded UIs do

@@ -5,6 +5,9 @@ agent, native SDK tools and RoomleCore, then returns the answer. This page cover
 ownership, channels, startup, messages, state and extension points. It follows the structure of
 the roomle-ui [HI agent architecture](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/.agents/homag-intelligence/agent-architecture.md).
 
+For an overview without code, see
+[How the AI Configuration Assistant works](../../docs/configuration-assistant-overview.md).
+
 Related references own the details below this layer:
 
 - [SDK API overview](roomle-configurator-api-for-mcp.md): native-operation lifecycle, context and source map.
