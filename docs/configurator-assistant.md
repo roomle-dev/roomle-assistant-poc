@@ -5,6 +5,9 @@ This example embeds a native Roomle product configurator and uses the browser as
 selects the model, keeps the conversation and runs the agent loop. The tools inspect and edit the
 same live configuration that the user sees.
 
+For a component diagram and a request walkthrough, see
+[How the AI Configuration Assistant works](configuration-assistant-overview.md).
+
 With `chat=true` the example sets `featureFlags.configurationAssistant=true`, which exposes the
 **AI Configuration Assistant** in configurator mode. `planningAssistant` is reserved for planner
 mode and does not enable configurator chat. The embedding host starts the agent; embedded UIs do
@@ -78,6 +81,7 @@ this example. The runtime is one static process and the embedding messages betwe
 
 See the roomle-ui [integration guide](https://github.com/roomle-dev/roomle-ui/blob/feat/configurator-mcp-api/packages/embedding-lib/docs/configurator-assistant.md)
 and this repository's [implementation reference](../.agents/context/configurator-example-with-planning-assistant-chat.md).
-
-The launcher requires a non-empty API key when a model is specified. The page validates the key
-before starting the agent.
+For the browser runtime and the prompt/tool round trip, use the
+[assistant architecture](../.agents/context/configurator-assistant-architecture.md).
+The [API overview](../.agents/context/roomle-configurator-api-for-mcp.md) links to the query and
+execution contracts.

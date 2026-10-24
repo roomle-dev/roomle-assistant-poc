@@ -47,7 +47,7 @@ The interface lives in `packages/web-sdk/packages/configurator-core/src/roomle-c
 implementation lives in `packages/web-sdk/packages/common-core/src/mcp-api` and is dynamically
 loaded, following the pattern of `getExternalObjectPlanContext` and of the already implemented
 `getConfiguratorCapabilities`. The wiki page
-[The roomle-ui configurator API for the MCP server](../wiki/roomle-configurator-api-for-mcp.md) maps
+[The roomle-ui configurator API for the MCP server](../context/roomle-configurator-api-for-mcp.md) maps
 every query and operation to the existing API and names the gaps this analysis fills.
 
 ## How the area works today

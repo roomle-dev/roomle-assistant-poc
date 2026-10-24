@@ -64,23 +64,24 @@ each feature works today. The index is [the feature index](context/README.md).
 
 | Feature | Covers |
 |---|---|
+| [Configuration Assistant architecture](context/configurator-assistant-architecture.md) | Components, roles, channels, startup, prompt round trip, messages, recovery, state and tests |
 | [The configurator example with the AI Configuration Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
+| [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Native operation API overview, shared lifecycle, context and source map |
+| [queryConfigurationOperation](context/query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |
+| [executeConfigurationOperation](context/execute-configuration-operation.md) | Write API: operation catalog, payloads, results, history and errors |
 | [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
 
 ### Wiki
 
-Living-reference pages that answer a recurring question once — an API map, a contract between
-repositories, a data-flow summary. Not an analysis: no lifecycle, updated when the behaviour changes.
-
-| Page | Covers |
-|---|---|
-| [The roomle-ui configurator API for agent tools](./wiki/roomle-configurator-api-for-mcp.md) | The native queries, operations and SDK tool integration |
+Living-reference answers to recurring questions are indexed in [the wiki](wiki/README.md).
+Source-code architecture and API contracts belong to [Context](#context). There are no wiki pages.
 
 ### User-Facing Documentation
 
 Living reference documentation for end users and developers is maintained in the `docs/` folder,
 indexed by [docs/README.md](../docs/README.md):
 
+- [configuration-assistant-overview.md](../docs/configuration-assistant-overview.md) — Components, diagram, request walkthrough, native undo, privacy and limits
 - [configurator-assistant.md](../docs/configurator-assistant.md) — Browser assistant, tools, providers and compatibility
 
 ---

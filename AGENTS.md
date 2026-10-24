@@ -105,7 +105,9 @@ The start script (`npm start`) provides:
 │   └── README.md                   # How to run the page, its URL parameters
 ├── docs/                           # Living reference for users and developers
 │   ├── README.md                   # Index of every document in docs/
-│   └── configurator-assistant.md   # Browser assistant usage and compatibility
+│   ├── configuration-assistant-overview.md # Components and request walkthrough
+│   ├── configurator-assistant.md   # Browser assistant usage and compatibility
+│   └── images/configuration-assistant-components.svg
 ├── package.json                    # start/dev/test/format/lint scripts
 ├── README.md                       # Quickstart and usage guide
 ├── AGENTS.md                       # This file - AI assistant instructions
@@ -118,8 +120,14 @@ The start script (`npm start`) provides:
 │   │   └── README.md
 │   ├── bug-analysis/               # Bug root-cause analyses
 │   │   └── README.md
-│   ├── context/                    # Living reference: how the implemented features work today
-│   │   └── README.md               # Feature index
+│   ├── context/                    # Source-code documentation and implemented feature reference
+│   │   ├── README.md               # Feature and API index
+│   │   ├── configurator-assistant-architecture.md # Browser agent architecture
+│   │   ├── configurator-example-with-planning-assistant-chat.md
+│   │   ├── roomle-configurator-api-for-mcp.md # Shared SDK API architecture
+│   │   ├── query-configuration-operation.md  # Read API contract
+│   │   ├── execute-configuration-operation.md # Write API contract
+│   │   └── get-configurator-capabilities.md
 │   ├── decisions/                  # Architecture Decision Records (ADRs)
 │   │   ├── README.md
 │   │   └── 0001-sdk-owned-configurator-capabilities.md
@@ -142,9 +150,8 @@ The start script (`npm start`) provides:
 │   │   ├── github-workflow.md      # Git staging, commits, pre-commit checklist
 │   │   ├── plan-implementation.md  # Plan an implementation with unit tests
 │   │   └── roomle-pr-resolution.md # Resolving a pull request's review
-│   └── wiki/                       # Wiki pages: durable living-reference answers
-│       ├── README.md
-│       └── roomle-configurator-api-for-mcp.md # The roomle-ui API the agent tools use
+│   └── wiki/                       # Durable answers outside source-code/API documentation
+│       └── README.md
 ├── .temp/                          # Scratch space, git-ignored
 ├── .oxlintrc.json                  # Oxlint settings
 ├── .prettierrc.json                # Prettier settings
@@ -333,7 +340,7 @@ A repository the work leaves unchanged is named only where a reader would expect
 | Benchmark / performance analysis | `.agents/benchmarks/` |
 | Wiki page — a durable answer to a recurring question | `.agents/wiki/` with kebab-case slug |
 | Open work | `.agents/backlog/README.md` |
-| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge, `.agents/context/` for the living reference of an implemented feature |
+| Living reference | `docs/` for user-facing documentation, `.agents/skills/` for agent-facing domain knowledge, `.agents/context/` for source-code documentation, API contracts and the living reference of an implemented feature |
 | Image referenced by a document | `.agents/images/` with a descriptive kebab-case name |
 
 **Important**: Analysis documents in `.agents/bug-analysis/`, `.agents/feature-analysis/`, and `.agents/refactoring-analysis/` are **historical records** — they document the analysis process and decisions, but the durable knowledge should be promoted to living-reference documentation in `docs/` or the skill files.

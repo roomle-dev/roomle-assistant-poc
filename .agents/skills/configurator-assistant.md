@@ -2,7 +2,9 @@
 
 Load for the example, launcher, browser chat or native tool integration. Read
 [the user guide](../../docs/configurator-assistant.md) and
-[the implementation reference](../context/configurator-example-with-planning-assistant-chat.md).
+[the example reference](../context/configurator-example-with-planning-assistant-chat.md).
+Use [the assistant architecture](../context/configurator-assistant-architecture.md) for runtime
+ownership, channels, startup, message formats and recovery.
 
 ## Ownership
 
@@ -20,7 +22,10 @@ the tool and window endpoint. The pagehide signal aborts the assistant.
 
 The native configurator window is **AI Configuration Assistant**. Its flag is separate from
 `planningAssistant`, which enables the planner's window. The compatible UI must support the new
-flag as well as the three native tool methods. Embedded UIs leave agent startup to this host.
+flag as well as the three native tool methods. This example starts the agent in its host and
+passes the key to that helper. UI-managed startup instead uses `configurationAssistant` plus a
+non-empty init-data `apiKey`; select one owner for the window's prompt callback. The architecture
+reference describes that path and planner isolation.
 With a model selected, the launcher rejects missing or blank API keys; the page validates the key before starting the agent.
 
 The launcher accepts the model/key on the command line, never in the URL. Its config route checks

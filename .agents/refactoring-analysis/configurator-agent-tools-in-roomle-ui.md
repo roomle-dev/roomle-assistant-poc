@@ -218,7 +218,7 @@ For the loading/performance acceptance check, record initial JS/chunk requests w
 
 The implementation review must settle three behavioral choices explicitly: whether external MCP access is still a requirement, whether configurator interruption summaries/deadline are retained as recommended, and whether native isolation is explicitly selected or a later automatic HI/configurator switch is desired. None blocks this analysis; no destructive migration is performed here.
 
-Documentation belongs with the new owners: add roomle-ui's configurator agent architecture/tool contract beside its SDK documentation; update `packages/embedding-lib/docs/{configuration-operations,configurator-capabilities,planning-assistant-embedding,planning-assistant-overview}.md`, its README, and the HI architecture/behavior references for shared code moves. In this repository update `README.md`, `AGENTS.md`, `docs/{README,configurator-mcp-server}.md`, the example README, `.agents/context/{configurator-example-with-planning-assistant-chat,get-configurator-capabilities}.md`, `.agents/wiki/roomle-configurator-api-for-mcp.md`, the MCP skill and indexes. Refine ADR 0001's transport wording when the implementation changes, retaining its SDK-owned discovery decision; record the new tool ownership decision then. Do not rewrite living reference to describe an unimplemented proposal.
+Documentation belongs with the new owners: add roomle-ui's configurator agent architecture/tool contract beside its SDK documentation; update `packages/embedding-lib/docs/{configuration-operations,configurator-capabilities,planning-assistant-embedding,planning-assistant-overview}.md`, its README, and the HI architecture/behavior references for shared code moves. In this repository update `README.md`, `AGENTS.md`, `docs/{README,configurator-mcp-server}.md`, the example README, `.agents/context/{configurator-example-with-planning-assistant-chat,get-configurator-capabilities}.md`, `.agents/context/roomle-configurator-api-for-mcp.md`, the MCP skill and indexes. Refine ADR 0001's transport wording when the implementation changes, retaining its SDK-owned discovery decision; record the new tool ownership decision then. Do not rewrite living reference to describe an unimplemented proposal.
 
 ## Validation of this analysis
 
@@ -320,7 +320,7 @@ This repository's remaining runtime files are `minimal-configurator-example/inde
 The ownership decision is [ADR 0002](../decisions/0002-configurator-tools-run-in-the-sdk.md).
 The [implementation context](../context/configurator-example-with-planning-assistant-chat.md),
 [capability contract](../context/get-configurator-capabilities.md),
-[API map](../wiki/roomle-configurator-api-for-mcp.md),
+[API map](../context/roomle-configurator-api-for-mcp.md),
 [integration skill](../skills/configurator-assistant.md) and
 [external guide](../../docs/configurator-assistant.md) describe the result. roomle-ui owns the
 native agent guideline and embedding integration guide; its HI architecture references name the

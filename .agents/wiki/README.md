@@ -11,8 +11,9 @@ the Jira comments.
 
 ## What belongs here
 
-- A durable answer to a question that comes up again: an API map, a data-flow summary, a contract
-  between this repository and another one, a decision record that is not an ADR.
+- A durable answer to a recurring question that is not source-code documentation or an API
+  contract. Source-code architecture, data flows and API contracts belong in
+  [context](../context/README.md).
 - Current `file:line` references, checked against the code when the page is written or updated.
 
 ## What does not belong here
@@ -25,9 +26,8 @@ the Jira comments.
 
 ## Current Documents
 
-| Document | Covers |
-|---|---|
-| [The roomle-ui configurator API for agent tools](roomle-configurator-api-for-mcp.md) | The native queries, operations and SDK tool integration |
+No wiki pages. The native configurator API references are indexed in
+[context](../context/README.md).
 
 Add wiki pages as needed following the naming convention: `kebab-case-description.md`
-(e.g., `page-bridge-protocol.md`).
+(e.g., `choosing-an-example.md`).
