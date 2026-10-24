@@ -6,47 +6,39 @@ what is currently valid in the live session. The result distinguishes **declared
 **currently evaluated choices**: reading only the current parameters misses dormant components and
 conditional alternatives; reading only component definitions misses evaluated conditions,
 shared-parameter intersections and material-group contents. The contract is one SDK read —
-`RoomleConfigurator.queryConfigurationOperation('capabilities', { include })`, built on
-`getConfiguratorCapabilities(include?)` — and one SDK-owned agent tool
+`RoomleConfigurator.queryConfigurationOperation('capabilities', { include })`, using the same
+collector as `getConfiguratorCapabilities(include?)` — and one SDK-owned agent tool
 that returns it. The design decision is [ADR 0001 — SDK-owned configurator
 capabilities](../decisions/0001-sdk-owned-configurator-capabilities.md); the user-facing reference is
 [the assistant guide](../../docs/configurator-assistant.md).
 
-## The call chain
+## SDK integration
 
-```text
-MCP tool get-configurator-capabilities
-  → embedding callConfiguratorAgentTool through the normal message channel
-  → configurator SDK tool registry
-  → queryConfigurationOperation('capabilities', { include })
-  → iframe RoomleConfigurator: dynamic import of the operation implementation
-  → getConfiguratorCapabilities(include?): dynamic import of the collector
-  → collector in roomle-ui common-core/src/mcp-api/configurator-capabilities.ts
-  → JSON result over the same route
-```
+The SDK registry forwards the tool to the
+[capabilities query](query-configuration-operation.md#query-catalog). That query and the public
+`getConfiguratorCapabilities(include?)` method both call
+`collectConfiguratorCapabilities` in roomle-ui's
+`common-core/src/mcp-api/configurator-capabilities.ts`; the query does not call the public
+capabilities method. Dynamic imports keep the collector out of ordinary configurator startup.
 
-The SDK methods are thin: they dynamically import the collector on first call — keeping the
-collector out of the initial SDK bundle — and delegate with the current configurator context,
-kernel access and RAPI access. The embedding-lib announces every public prototype method
-automatically, so the generic API reaches a configurator page as
-`instance.extended.queryConfigurationOperation` and, in the planner's isolation mode, the planner's
-inner configurator as `instance.configurator…`. The public
-types are exported type-only from the web-sdk index, and the contract for embedders is documented in
-roomle-ui's `packages/embedding-lib/docs/configurator-capabilities.md`.
+The [API overview](roomle-configurator-api-for-mcp.md) describes embedding access, tool forwarding,
+shared lifecycle and context. Capability types are exported type-only from the web-sdk index;
+roomle-ui's embedder contract is `packages/embedding-lib/docs/configurator-capabilities.md`.
 
 ## The result
 
-The result is plain JSON — never a Promise, `Map`, Emscripten container or a reference to a mutable
-cached DTO. It always carries a small envelope plus the requested sections:
+This section describes the detached capability payload returned by the agent tool. The generic
+[query envelope](query-configuration-operation.md#query-catalog) contains it in `capabilities`.
+The payload carries a small envelope plus the requested sections:
 
 | Part | Content |
 |---|---|
-| `context` | The configuration runtime ID, the root runtime ID, the root catalog component ID, the selected runtime IDs and the snapshot's configuration hash |
+| `context` | The [shared operation context](roomle-configurator-api-for-mcp.md#shared-context-and-json-data) |
 | `complete` | Whether the requested declared graph and metadata were collected — not whether every hypothetical configuration or docking combination has been evaluated |
 | `unresolved` | Entries identifying a resource/section and the reason it is missing |
 
 `include` selects sections; omitted or empty requests all six. Invalid names are rejected before
-the SDK operation is called.
+a kernel call is made.
 
 | Section | Contents |
 |---|---|
@@ -92,19 +84,16 @@ Parameter semantics the JSON preserves:
 
 ## Read semantics
 
-- The read changes no configuration, selection or history and does not wait for a history event.
-  It joins the SDK operation chain with other reads and writes. It may fetch catalog metadata, so it is not an offline-only
-  tool.
-- The active target is established from the configuration runtime ID and the actual kernel root —
-  not from the last loaded RAPI ID. Outside an active configurator or isolation session the read
-  rejects with an actionable error instead of reading a stale selection.
-- Runtime state is captured into detached data before any remote enrichment, and the active
-  configuration ID/hash is rechecked before returning: a concurrent edit or an isolation exit
-  invalidates the snapshot and rejects the call. The caller reads again after an edit completes.
-- Failures stay visible: requested material IDs are compared with the returned records, missing
-  metadata is reported, and cached/offline group data is never declared authoritative. Useful
-  partial catalog data returns with `complete: false`; an invalid or missing component or item
-  configuration identifies the affected resource.
+Capability reads follow the operation APIs'
+[shared lifecycle and serialization](roomle-configurator-api-for-mcp.md#shared-lifecycle-and-serialization)
+and [query freshness contract](query-configuration-operation.md#errors-and-freshness).
+Runtime data is detached before remote catalog enrichment. Collection may fetch metadata and
+is not an offline-only read.
+
+Failures stay visible: requested material IDs are compared with the returned records, missing
+metadata is reported, and cached/offline group data is never declared authoritative. Useful
+partial catalog data returns with `complete: false`; an invalid or missing component or item
+configuration identifies the affected resource.
 
 ## The agent tool
 
@@ -149,7 +138,7 @@ operation at a queried pair.
   reference: the tools, their results, running and connecting them
 - [The configurator assistant skill](../skills/configurator-assistant.md) — the capabilities
   read, adding a tool, tests
-- [The roomle-ui configurator API for agent tools](../wiki/roomle-configurator-api-for-mcp.md) —
-  the API map, including the implemented query and operation catalogs
+- [The roomle-ui configurator API for agent tools](roomle-configurator-api-for-mcp.md) —
+  shared architecture, with links to the query and execution contracts
 - [The configurator example with the AI Configuration Assistant chat](configurator-example-with-planning-assistant-chat.md)
   — the chat that asks the product questions

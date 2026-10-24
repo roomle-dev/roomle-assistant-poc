@@ -18,6 +18,7 @@ passes `assistantModuleUrl` for the local public configurator entry. The page re
 before creating the configurator and uses the local helper for its agent. Non-dev mode retains
 the pinned CDN helper. The OpenAI provider uses the Responses API.
 
-The UI needs `getConfiguratorAgentTools`, `callConfiguratorAgentTool` and `getConfiguratorAgentPrompts`. Native planner isolation uses `instance.configurator` for tools and `instance.extended` for the window. Native undo includes manual edits and configuration replacements. No-op writes add no step; uncertain writes are not replayed.
+The UI needs `getConfiguratorAgentTools`, `callConfiguratorAgentTool` and `getConfiguratorAgentPrompts`. Native planner isolation uses `instance.configurator` for tools and `instance.extended` for the window.
 
-The sixteen tools are [roomle-ui code](https://github.com/roomle-dev/roomle-ui/blob/feat/configurator-mcp-api/.agents/configurator-agent-tools.md). Local Node tests cover config, no-store, foreign Hosts and shutdown. Browser checks cover discovery, edits, no-ops, undo/redo and non-agent SDK edits. See [the guide](../../docs/configurator-assistant.md).
+The [SDK API overview](roomle-configurator-api-for-mcp.md) describes tool ownership and links to
+the query and execution contracts. Local Node tests cover config, no-store, foreign Hosts and shutdown. Browser checks cover discovery, edits, no-ops, undo/redo and non-agent SDK edits. See [the guide](../../docs/configurator-assistant.md).

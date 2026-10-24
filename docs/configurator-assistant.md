@@ -78,6 +78,5 @@ this example. The runtime is one static process and the embedding messages betwe
 
 See the roomle-ui [integration guide](https://github.com/roomle-dev/roomle-ui/blob/feat/configurator-mcp-api/packages/embedding-lib/docs/configurator-assistant.md)
 and this repository's [implementation reference](../.agents/context/configurator-example-with-planning-assistant-chat.md).
-
-The launcher requires a non-empty API key when a model is specified. The page validates the key
-before starting the agent.
+For SDK contracts, use the [API overview](../.agents/context/roomle-configurator-api-for-mcp.md),
+which links to the query and execution references.

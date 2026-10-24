@@ -65,16 +65,15 @@ each feature works today. The index is [the feature index](context/README.md).
 | Feature | Covers |
 |---|---|
 | [The configurator example with the AI Configuration Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
+| [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Shared API architecture, embedding access, lifecycle, context and source map |
+| [queryConfigurationOperation](context/query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |
+| [executeConfigurationOperation](context/execute-configuration-operation.md) | Write API: operation catalog, payloads, results, history and errors |
 | [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
 
 ### Wiki
 
-Living-reference pages that answer a recurring question once — an API map, a contract between
-repositories, a data-flow summary. Not an analysis: no lifecycle, updated when the behaviour changes.
-
-| Page | Covers |
-|---|---|
-| [The roomle-ui configurator API for agent tools](./wiki/roomle-configurator-api-for-mcp.md) | The native queries, operations and SDK tool integration |
+Living-reference answers to recurring questions are indexed in [the wiki](wiki/README.md).
+Source-code architecture and API contracts belong to [Context](#context). There are no wiki pages.
 
 ### User-Facing Documentation
 
