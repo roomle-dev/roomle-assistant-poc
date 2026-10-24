@@ -26,17 +26,20 @@ const parseConfig = () => {
   const alias = MODEL_ALIASES[name];
   const provider =
     alias?.[0] ??
-    (name.startsWith('mistral-')
-      ? 'mistral'
-      : name.startsWith('claude-')
-        ? 'anthropic'
-        : name.startsWith('gemini-')
-          ? 'google'
-          : name === 'azure'
-            ? 'azure'
-            : undefined);
+    (name.startsWith('gpt-') || /^o[1-9](?:-|$)/.test(name)
+      ? 'openai'
+      : name.startsWith('mistral-')
+        ? 'mistral'
+        : name.startsWith('claude-')
+          ? 'anthropic'
+          : name.startsWith('gemini-')
+            ? 'google'
+            : name === 'azure'
+              ? 'azure'
+              : undefined);
   if (!provider) throw new Error('Unsupported model: ' + name);
-  if (!apiKey) throw new Error('Missing API key: npm start <model> <api-key>');
+  if (!apiKey?.trim())
+    throw new Error('Missing API key: npm start <model> <api-key>');
   const model = process.env.CONFIGURATOR_CHAT_MODEL || alias?.[1] || name;
   const baseUrl = process.env.AZURE_BASE_URL;
   if (provider === 'azure' && !baseUrl)
@@ -61,6 +64,9 @@ try {
 const query = new URLSearchParams({
   ...(chatConfig && { chat: 'true' }),
   ...(EXAMPLE_SERVER_URL && { overrideServerUrl: EXAMPLE_SERVER_URL }),
+  ...(process.argv.includes('--dev') && {
+    assistantModuleUrl: `${DEV_SERVER_URL}packages/embedding-lib/src/configurator.ts`,
+  }),
 });
 const EXAMPLE_URL =
   'http://localhost:' + STATIC_PORT + '/' + (query.size ? '?' + query : '');

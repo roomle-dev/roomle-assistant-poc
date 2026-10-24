@@ -5,6 +5,11 @@ This example embeds a native Roomle product configurator and uses the browser as
 selects the model, keeps the conversation and runs the agent loop. The tools inspect and edit the
 same live configuration that the user sees.
 
+With `chat=true` the example sets `featureFlags.configurationAssistant=true`, which exposes the
+**AI Configuration Assistant** in configurator mode. `planningAssistant` is reserved for planner
+mode and does not enable configurator chat. The embedding host starts the agent; embedded UIs do
+not start a second copy.
+
 ## Run
 
 ```sh
@@ -13,6 +18,7 @@ npm start
 npm start mistral-medium <api-key>
 npm start mistral-large <api-key>
 npm run dev mistral-medium <api-key>
+npm run dev gpt-6.1-sol "$OPENAI_ASSISTANT_API_KEY"
 ```
 
 `npm start` serves the page on port 3000. With a model it opens `?chat=true` and serves the model
@@ -20,15 +26,21 @@ configuration to the local page at `/planning-assistant-config.json`. `npm run d
 iframe at the roomle-ui dev server on port 5173. Set `EXAMPLE_PORT` for another page port and
 `EXAMPLE_SERVER_URL` for another UI deployment. Pass `--no-open` to skip opening the browser.
 
-The UI must contain `getConfiguratorAgentTools`, `callConfiguratorAgentTool` and
-`getConfiguratorAgentPrompts`. Use the roomle-ui `feat/configurator-mcp-api` branch locally until
-these methods are deployed. A compatible embedding library alone does not add methods to an
+The UI must support `featureFlags.configurationAssistant` and contain `getConfiguratorAgentTools`,
+`callConfiguratorAgentTool` and `getConfiguratorAgentPrompts`. Use the roomle-ui integration branch
+locally until the flag and methods are deployed. A compatible embedding library alone does not add methods to an
 older iframe UI. An older UI is reported as unavailable.
 
 The page pins `@roomle/embedding-lib@0.0.0-dev-9d077e2`, built from roomle-ui commit
 `9d077e222fb59ac4c6f8b4ee248431a88b575c9c` with the optional configurator entry.
 
-The launcher accepts Mistral aliases and model ids, `claude`/`claude-*`, `gemini`/`gemini-*`, and
+The launcher recognizes OpenAI model ids starting with `gpt-` or an o-series name such as `o3`.
+Use a text model with function calling and an API key whose project has access to that model.
+In dev mode the example loads the assistant helper from the local roomle-ui server on port 5173,
+so local provider changes are available without publishing the embedding library. The normal
+non-dev page uses its pinned CDN helper and requires a published version supporting OpenAI.
+
+The launcher also accepts Mistral aliases and model ids, `claude`/`claude-*`, `gemini`/`gemini-*`, and
 `azure`. For Azure set `AZURE_BASE_URL` to the deployment resource's OpenAI endpoint and
 `CONFIGURATOR_CHAT_MODEL` to the deployment name. The same variable can override another
 provider's model. Images are disabled in this example.
@@ -66,3 +78,6 @@ this example. The runtime is one static process and the embedding messages betwe
 
 See the roomle-ui [integration guide](https://github.com/roomle-dev/roomle-ui/blob/feat/configurator-mcp-api/packages/embedding-lib/docs/configurator-assistant.md)
 and this repository's [implementation reference](../.agents/context/configurator-example-with-planning-assistant-chat.md).
+
+The launcher requires a non-empty API key when a model is specified. The page validates the key
+before starting the agent.

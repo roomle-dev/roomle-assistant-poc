@@ -79,7 +79,7 @@ roomle-configurator-mcp is a demonstration and development environment for:
 
 1. **Minimal Configurator Example** — A standalone HTML page (`minimal-configurator-example/index.html`) that initialises a default Roomle configurator with the embedding-lib, served by the launcher `minimal-configurator-example/start.mjs`
 2. **SDK tools** — roomle-ui owns eight reads, six writes, undo and redo, loaded on demand inside the configurator. This repository maintains no local tool implementation.
-3. **Browser assistant** — The optional `@roomle/embedding-lib/configurator` entry runs the agent in the host page, with the existing AI Planning Assistant window in the iframe.
+3. **Browser assistant** — The optional `@roomle/embedding-lib/configurator` entry runs the agent in the host page, with the AI Configuration Assistant window in the iframe, enabled by `configurationAssistant`.
 
 The pattern is [roomle-hi-example](https://github.com/roomle-dev/roomle-hi-example): tools run in the iframe and the embedding library runs the host agent. The native configurator has no single HI library data set:
 
@@ -435,7 +435,7 @@ npm start mistral-large <api-key>
 
 The launcher opens <http://localhost:3000/> (`?chat=true` with a model). `npm run dev`
 opens the page against the local Rubens UI dev server (:5173) instead; `npm start -- --no-open`
-skips the browser. The chat needs a Rubens UI whose configurator has the AI Planning Assistant
+skips the browser. The chat needs a Rubens UI whose configurator has the AI Configuration Assistant
 window and native agent methods. Details: [`docs/configurator-assistant.md`](./docs/configurator-assistant.md).
 
 ### Checks Before Committing

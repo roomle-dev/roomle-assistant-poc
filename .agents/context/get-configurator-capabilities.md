@@ -151,5 +151,5 @@ operation at a queried pair.
   read, adding a tool, tests
 - [The roomle-ui configurator API for agent tools](../wiki/roomle-configurator-api-for-mcp.md) —
   the API map, including the implemented query and operation catalogs
-- [The configurator example with the AI Planning Assistant chat](configurator-example-with-planning-assistant-chat.md)
+- [The configurator example with the AI Configuration Assistant chat](configurator-example-with-planning-assistant-chat.md)
   — the chat that asks the product questions
