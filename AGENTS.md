@@ -120,6 +120,7 @@ The start script (`npm start`) provides:
 │   │   └── README.md
 │   ├── context/                    # Source-code documentation and implemented feature reference
 │   │   ├── README.md               # Feature and API index
+│   │   ├── configurator-assistant-architecture.md # Browser agent architecture
 │   │   ├── configurator-example-with-planning-assistant-chat.md
 │   │   ├── roomle-configurator-api-for-mcp.md # Shared SDK API architecture
 │   │   ├── query-configuration-operation.md  # Read API contract

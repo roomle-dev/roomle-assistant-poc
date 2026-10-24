@@ -14,7 +14,8 @@ Each contract has one home; the other documents link to it.
 
 | Document | Owns |
 |---|---|
-| This overview | Embedding access, shared lifecycle, context, ownership and source locations |
+| This overview | Embedding access, shared operation lifecycle, context and source locations |
+| [Configuration Assistant architecture](configurator-assistant-architecture.md) | Agent runtime, chat/store, channels, startup, model loop, messages and recovery |
 | [queryConfigurationOperation](query-configuration-operation.md) | Query names, payloads, results, docking sources and read errors |
 | [executeConfigurationOperation](execute-configuration-operation.md) | Operation names, payloads, results, history outcomes and write errors |
 | [Configurator capabilities](get-configurator-capabilities.md) | Capability sections, discovery, declared/current choices and partial catalog results |
@@ -25,30 +26,13 @@ Each contract has one home; the other documents link to it.
 
 For a native configurator embedding, call either operation API through `instance.extended`.
 In a planner editing a native object in isolation, use `instance.configurator`, which addresses the
-planner's inner configurator. The embedding handshake announces SDK prototype methods and builds
-the host proxies automatically.
+planner's inner configurator.
 
-The browser assistant takes this path:
-
-```text
-Host embedding assistant
-  → getConfiguratorAgentTools / callConfiguratorAgentTool
-  → configurator SDK tool registry
-  → queryConfigurationOperation / executeConfigurationOperation
-  → dynamically imported common-core/src/mcp-api/configuration-operations.ts
-  → kernel access, RAPI and native scene/history services
-```
-
-The registry exposes eight reads, six writes, undo and redo. Each API catalog gives the
-corresponding tool name. Tools validate their inputs and return JSON text in MCP-shaped content.
-Tool result adaptations are specified in the
-[query catalog](query-configuration-operation.md#query-catalog) and the
-[execution reference](execute-configuration-operation.md#history-and-completion).
-
-The example forwards tool discovery and calls through the embedding channel. SDK tool definitions
-ship with roomle-ui; adding a tool updates its registry, schemas, descriptions and SDK tests.
-The embedding integration needs no page-maintained method list or server allow-list.
-See [ADR 0002](../decisions/0002-configurator-tools-run-in-the-sdk.md) for the ownership decision.
+The [assistant architecture](configurator-assistant-architecture.md) owns the tool-discovery and
+forwarding path, SDK registry loading, embedding handshake and chat messages. Its registry calls
+these operation APIs on the same SDK instance. The linked [query](query-configuration-operation.md)
+and [execution](execute-configuration-operation.md) catalogs identify each corresponding tool and
+its result adaptation.
 
 ## Native operation boundary
 
@@ -56,10 +40,9 @@ The two generic methods provide an operation surface independent of UI selection
 interaction. Existing typed SDK methods continue to serve the UI and provide reusable internal
 operations. Agent reads and writes do not replay mouse-drag gestures.
 
-RoomleCore supplies the pure `getDockPairs` read and the `dockNewComponent` create-and-dock
-primitive. Kernel access wraps those APIs alongside existing parameter, deletion and docking
-operations. Scene management owns configuration replacement and history. The API references
-specify the payloads and results for each path.
+The [native operation path](configurator-assistant-architecture.md#native-operations-and-kernel)
+describes kernel, scene and history responsibilities. The API references specify the payloads and
+results for each operation.
 
 ## Shared lifecycle and serialization
 
@@ -110,7 +93,6 @@ Paths below belong to roomle-ui. The links point to its configuration-assistant 
 | Payload and result unions, exported type-only from the web-sdk index | [common-core/src/mcp-api/configuration-operations-types.ts](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/packages/web-sdk/packages/common-core/src/mcp-api/configuration-operations-types.ts) |
 | Tool registration, result adaptation and input schemas | [configurator-core/src/configurator-mcp/](https://github.com/roomle-dev/roomle-ui/tree/feat/configuration-assistant/packages/web-sdk/packages/configurator-core/src/configurator-mcp) |
 | Kernel wrappers and DTOs | [common-core/src/configurator-kernel-access.ts](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/packages/web-sdk/packages/common-core/src/configurator-kernel-access.ts), [typings/kernel.ts](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/packages/web-sdk/packages/typings/kernel.ts) |
-| SDK method announcement and host proxy construction | [src/configurator/embedding/exposed-api.ts](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/src/configurator/embedding/exposed-api.ts), [packages/embedding-lib/src/connector.ts](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/packages/embedding-lib/src/connector.ts) |
 
 The SDK [operation tests](https://github.com/roomle-dev/roomle-ui/blob/feat/configuration-assistant/packages/web-sdk/packages/common-core/__tests__/mcp-api/configuration-operations.ts)
 cover payload validation, active targets, detached reads, docking sources, stale sessions,

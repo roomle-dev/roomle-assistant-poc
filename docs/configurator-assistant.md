@@ -78,5 +78,7 @@ this example. The runtime is one static process and the embedding messages betwe
 
 See the roomle-ui [integration guide](https://github.com/roomle-dev/roomle-ui/blob/feat/configurator-mcp-api/packages/embedding-lib/docs/configurator-assistant.md)
 and this repository's [implementation reference](../.agents/context/configurator-example-with-planning-assistant-chat.md).
-For SDK contracts, use the [API overview](../.agents/context/roomle-configurator-api-for-mcp.md),
-which links to the query and execution references.
+For the browser runtime and the prompt/tool round trip, use the
+[assistant architecture](../.agents/context/configurator-assistant-architecture.md).
+The [API overview](../.agents/context/roomle-configurator-api-for-mcp.md) links to the query and
+execution contracts.

@@ -1,6 +1,9 @@
 # Configurator example and AI Configuration Assistant
 
-The runtime is one static Node launcher and one HTML page. The iframe SDK owns native tools and prompts, loaded on demand. The optional embedding entry runs the host agent. The launcher serves model/key configuration only to the local page.
+The example consists of one static Node launcher and one HTML page. The launcher serves
+model/key configuration to the local page, which starts the embedding host's agent. The
+[assistant architecture](configurator-assistant-architecture.md) describes the browser runtime,
+SDK tools, messages and both host-managed and UI-managed startup.
 
 Both browser imports pin `@roomle/embedding-lib@0.0.0-dev-9d077e2` on jsDelivr, from roomle-ui `9d077e222`.
 The iframe needs the matching agent API and `configurationAssistant` feature flag. Use the
@@ -20,5 +23,5 @@ the pinned CDN helper. The OpenAI provider uses the Responses API.
 
 The UI needs `getConfiguratorAgentTools`, `callConfiguratorAgentTool` and `getConfiguratorAgentPrompts`. Native planner isolation uses `instance.configurator` for tools and `instance.extended` for the window.
 
-The [SDK API overview](roomle-configurator-api-for-mcp.md) describes tool ownership and links to
-the query and execution contracts. Local Node tests cover config, no-store, foreign Hosts and shutdown. Browser checks cover discovery, edits, no-ops, undo/redo and non-agent SDK edits. See [the guide](../../docs/configurator-assistant.md).
+The [SDK API overview](roomle-configurator-api-for-mcp.md) links to the query and execution
+contracts. Local Node tests cover config, no-store, foreign Hosts and shutdown. Browser checks cover discovery, edits, no-ops, undo/redo and non-agent SDK edits. See [the guide](../../docs/configurator-assistant.md).

@@ -64,8 +64,9 @@ each feature works today. The index is [the feature index](context/README.md).
 
 | Feature | Covers |
 |---|---|
+| [Configuration Assistant architecture](context/configurator-assistant-architecture.md) | Components, roles, channels, startup, prompt round trip, messages, recovery, state and tests |
 | [The configurator example with the AI Configuration Assistant chat](context/configurator-example-with-planning-assistant-chat.md) | Browser host, on-demand SDK tools, embedding assistant and static launcher |
-| [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Shared API architecture, embedding access, lifecycle, context and source map |
+| [The roomle-ui configurator API for agent tools](context/roomle-configurator-api-for-mcp.md) | Native operation API overview, shared lifecycle, context and source map |
 | [queryConfigurationOperation](context/query-configuration-operation.md) | Read API: query catalog, payloads, results, docking sources and errors |
 | [executeConfigurationOperation](context/execute-configuration-operation.md) | Write API: operation catalog, payloads, results, history and errors |
 | [Configurator capabilities for the configurator MCP](context/get-configurator-capabilities.md) | The SDK capability collector and its six sections, the read-only `get-configurator-capabilities` tool, the declared/current and runtime/catalog distinctions |
