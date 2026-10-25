@@ -38,7 +38,7 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 |---|---|---|
 | [fence-assistant-fence-authoring.md](fence-assistant-fence-authoring.md) | Implemented — awaiting cross-repository landing | Native fence generation and manipulation beside terrain tools: runtime evidence, lazy UI APIs, minimal Core primitives, completion and verification |
 | [roomle-ui-entry-points-and-native-assistant.md](roomle-ui-entry-points-and-native-assistant.md) | Open | Direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented |
-| [query-and-execute-configuration-operation.md](query-and-execute-configuration-operation.md) | Open | The two generic roomle-ui APIs the MCP tools are built on: `queryConfigurationOperation` and `executeConfigurationOperation` |
+| [query-and-execute-configuration-operation.md](query-and-execute-configuration-operation.md) | Implemented — awaiting default-branch landing | The two generic roomle-ui APIs the MCP tools are built on: `queryConfigurationOperation` and `executeConfigurationOperation` |
 
 Add feature analysis documents as needed following the naming convention:
 `kebab-case-description.md` (e.g., `simplified-docking-for-agents.md`).

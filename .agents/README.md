@@ -110,7 +110,7 @@ feature behaves the way it does. Written **before** the work, closed out **after
 |---|---|---|
 | [Fence Assistant: fence generation and manipulation](feature-analysis/fence-assistant-fence-authoring.md) | Implemented — lazy fence authoring and native interactions; awaiting cross-repository landing | 2026-10-25 |
 | [Roomle UI entry points and a native configurator assistant](feature-analysis/roomle-ui-entry-points-and-native-assistant.md) | Open — direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented | 2026-10-24 |
-| [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on | 2026-10-19 |
+| [Query and execute configuration operation for the configurator MCP](feature-analysis/query-and-execute-configuration-operation.md) | Implemented — the two generic roomle-ui APIs the MCP tools are built on; awaiting default-branch landing | 2026-10-25 |
 
 ### Refactoring Analyses
 
