@@ -108,7 +108,6 @@ feature behaves the way it does. Written **before** the work, closed out **after
 
 | Document | Status | Last touched |
 |---|---|---|
-| [Roomle UI entry points and a native configurator assistant](feature-analysis/roomle-ui-entry-points-and-native-assistant.md) | Open — direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented | 2026-10-24 |
 
 ### Refactoring Analyses
 

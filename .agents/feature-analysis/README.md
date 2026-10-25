@@ -36,7 +36,6 @@ Once the work is on `master`, the durable outcome is promoted and the document d
 
 | Document | Status | Description |
 |---|---|---|
-| [roomle-ui-entry-points-and-native-assistant.md](roomle-ui-entry-points-and-native-assistant.md) | Open | Direct UI startup remains unimplemented; configuration flag/title and OpenAI example are implemented |
 
 Add feature analysis documents as needed following the naming convention:
 `kebab-case-description.md` (e.g., `simplified-docking-for-agents.md`).
