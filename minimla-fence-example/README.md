@@ -76,3 +76,8 @@ The shared chat appears as Fence Assistant. A matching UI/Core build is required
 this source change does not publish a package or update a deployed UI.
 
 See [Fence Assistant architecture and limits](../docs/fence-assistant-overview.md).
+
+The Fence Assistant offers 29 lazy SDK tools for terrain and native fence authoring.
+It can discover products, create/extend a fence, edit native parameters and lengths,
+place gates on a specified edge, and remove a complete fence. See the
+[operation contracts](../docs/fence-assistant-overview.md#fence-authoring).
