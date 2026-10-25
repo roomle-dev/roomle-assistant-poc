@@ -1,12 +1,12 @@
 # Fence Assistant: fence generation and manipulation
 
-**Status:** Open
+**Status:** Implemented on feature branches — awaiting landing in all affected default branches
 
 **Date:** 2026-10-24
 
 **Ticket:** [RML-18302 — research fence assistant](https://roomle.atlassian.net/browse/RML-18302)
 
-**Scope:** Feature analysis of adding native fence authoring to the implemented terrain tools. The proposed APIs and tools below are not implemented. The completed terrain analysis is removed at the user's explicit request; durable terrain behavior remains in the existing context and guides.
+**Scope:** Feature analysis of adding native fence authoring to the implemented terrain tools. The investigation below records the pre-implementation design; the implemented outcome is recorded at the end. The completed terrain analysis is removed at the user's explicit request; durable terrain behavior remains in the existing context and guides.
 
 ## Affected repositories
 
@@ -376,3 +376,38 @@ The proposed first version covers straight native contours, extensions, node/len
 Curved fence authoring, arbitrary junction splitting/merging, whole-fence family replacement, explicit multi-door fitting joins, fence-layout optimization, setbacks/obstacles/legal boundary constraints and structural/installation verification need their own precise contracts. They should not be inferred from the presence of a generic wall/object API.
 
 The two material implementation questions are the producer-owned construction completion contract and strict targeted gate placement. The recommended contour primitive has direct runtime evidence behind it. Neither question justifies moving schemas, tools, context assembly or the assistant runtime into Core.
+
+## Implementation outcome
+
+Implemented on `feat/fence-assistant-authoring` in RoomleCore, roomle-ui and this
+repository. The branches preserve the approved terrain bases. The 29-tool registry
+contains the original 15 terrain tools plus five construction reads and nine writes.
+SDK schemas, catalog/parameter metadata, scopes, prompts and orchestration stay lazy;
+Core adds two domain interactions and thin cached-rule/station/iterable reads.
+
+The native set binding has no JavaScript iterator. An additive object-array binding
+provides attachment incidence without changing that API. The existing node collection
+is exposed as an array so standalone construction anchors are discoverable.
+
+Synchronous edits mutate/commit/capture in one stack. Async insertion and native
+parameter callbacks use the existing tool-call history and scoped operation owner.
+Undo/load invalidate late calls; overlapping writers reject. Native aggregate geometry/
+BOM completion remains unavailable, so dependent outcomes stay explicitly pending.
+No new polling, timer, queue or native batch completion API is introduced.
+
+Validation includes native C++ and actual WASM tests, SDK/embedding recovery tests,
+full UI/SDK suites, builds and a packed SDK consumer. Real desktop/mobile probes
+exercise every new write, catalog metadata, native parameter dependencies, exact gate
+placement, ordinary history and a 200 mm terrain translation of the complete fence.
+The original 3000-by-2000 path remains exact on both layouts.
+
+Known validation limits: the Core Node suite retains the two baseline attic enum
+conversion failures. Current-code and packed SDK consumers compile, while the older UI
+compatibility check encounters existing migration exceptions whose grace period expires
+on 2026-10-25. UI documentation lint reproduces the same 22 warnings and two dependency/test type errors on the exact base branch. These unrelated policies, documentation findings and attic behavior are unchanged.
+
+Durable reference: [Fence Assistant contracts](../../docs/fence-assistant-overview.md#fence-authoring),
+[example context](../context/minimal-fence-example.md) and
+[the architecture decision](../decisions/0003-fence-authoring-runs-in-lazy-sdk-modules.md).
+The analysis remains until implementation is reachable from every affected default
+branch, as required by the analysis closeout skill. No branch is pushed by this work.

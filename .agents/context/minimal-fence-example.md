@@ -39,3 +39,9 @@ See the [example guide](../../minimla-fence-example/README.md) and roomle-ui's
 [minimum fence example](https://github.com/roomle-dev/roomle-ui/tree/master/packages/embedding-lib/docs/minimum-fence-example).
 
 The [Fence Assistant overview](../../docs/fence-assistant-overview.md) describes lazy SDK ownership, native dependencies, terrain units/history and conservative pending construction results.
+
+The assistant discovers 29 SDK tools: the existing terrain tools plus construction
+context/products/parameters/impact/overview reads and nine fence authoring writes.
+Product roots follow `catalogRootTag`; native distribution and exact edge placement
+run in Core, while validation and orchestration load dynamically in the UI. See
+[authoring contracts](../../docs/fence-assistant-overview.md#fence-authoring).

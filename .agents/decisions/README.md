@@ -22,6 +22,7 @@ Each ADR carries:
 |---|---|---|
 | [0001 — SDK-owned configurator capabilities](0001-sdk-owned-configurator-capabilities.md) | The SDK owns capability discovery and its agent tool returns the result | Accepted |
 | [0002 — Configurator tools run in the SDK](0002-configurator-tools-run-in-the-sdk.md) | Lazy iframe tools, shared host assistant and a static example | Accepted |
+| [0003 — Fence authoring runs in lazy SDK modules](0003-fence-authoring-runs-in-lazy-sdk-modules.md) | Native interaction boundary, shared ownership and truthful completion | Accepted |
 
 ## Adding an ADR
 
