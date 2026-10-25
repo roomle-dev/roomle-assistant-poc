@@ -61,6 +61,12 @@ also account for the root-parameter scope. A stale read rejects; executions that
 or resolve a docking child check freshness before applying the mutation. The API references
 describe the respective errors and recovery.
 
+Both APIs are implemented without the deprecated kernel load entry points
+`loadFreeFlyingConfiguration` and `loadPlainComponent`, without an AsyncHelper waiter and without
+a timer. Docking positions come from the kernel's pure `getDockPairs` evaluation and
+create-and-dock from `dockNewComponent`; no call orchestrates a load, a wait and a query around a
+temporary product.
+
 ## Shared context and JSON data
 
 Every query and execution result includes `type` and `context`.
